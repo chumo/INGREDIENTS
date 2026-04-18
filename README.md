@@ -2,6 +2,8 @@
 
 A modern, browser-based web application designed to validate and compare ingredient lists between a template document and a product label using AI extraction.
 
+Deployed at: https://chumo.github.io/INGREDIENTS/index.html
+
 ## Features
 - **AI-Powered Extraction**: Uses advanced AI models (via OpenRouter, OpenAI, or Gemini) to intelligently parse text from PDFs and images.
 - **Visual Mapping UI**: Features a detailed side-by-side mapping visualization allowing users to instantly spot missing, unnecessary, or incorrectly ordered ingredients.
