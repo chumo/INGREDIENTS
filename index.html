@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingredient Extractor</title>
+    <meta name="description" content="Extract ingredients from documents and images using AI.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- PDF.js for rendering PDFs to images client-side -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+</head>
+<body>
+    <div class="background-elements">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+    
+    <main class="container">
+        <header>
+            <h1>Ingredient Extractor</h1>
+            <p>Upload a document or image to instantly extract the list of ingredients.</p>
+        </header>
+
+        <section class="card settings-section">
+            <div class="input-group">
+                <label for="api-key">OpenRouter API Key</label>
+                <input type="password" id="api-key" placeholder="sk-or-v1-..." autocomplete="off">
+            </div>
+        </section>
+
+        <div class="split-layout">
+            <section class="card upload-section" id="template-drop-zone">
+                <h2>TEMPLATE</h2>
+                <div class="upload-content" id="template-upload-content">
+                    <svg viewBox="0 0 24 24" fill="none" class="upload-icon" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <h3>Drag & Drop Template</h3>
+                    <p>Supports PDF, PNG, JPG, JPEG</p>
+                    <input type="file" id="template-file-input" accept=".pdf,image/png,image/jpeg,image/jpg" hidden>
+                    <button class="btn btn-primary" onclick="document.getElementById('template-file-input').click()">Browse Files</button>
+                </div>
+                <div id="template-preview-container" class="hidden">
+                    <img id="template-image-preview" src="" alt="Template Preview">
+                    <div class="file-info" id="template-file-info"></div>
+                    <button class="btn btn-secondary" id="clear-template-file">Clear</button>
+                </div>
+            </section>
+
+            <section class="card upload-section" id="label-drop-zone">
+                <h2>LABEL</h2>
+                <div class="upload-content" id="label-upload-content">
+                    <svg viewBox="0 0 24 24" fill="none" class="upload-icon" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <h3>Drag & Drop Label</h3>
+                    <p>Supports PDF, PNG, JPG, JPEG</p>
+                    <input type="file" id="label-file-input" accept=".pdf,image/png,image/jpeg,image/jpg" hidden>
+                    <button class="btn btn-primary" onclick="document.getElementById('label-file-input').click()">Browse Files</button>
+                </div>
+                <div id="label-preview-container" class="hidden">
+                    <img id="label-image-preview" src="" alt="Label Preview">
+                    <div class="file-info" id="label-file-info"></div>
+                    <button class="btn btn-secondary" id="clear-label-file">Clear</button>
+                </div>
+            </section>
+        </div>
+
+        <section class="action-section">
+            <button class="btn btn-extract" id="extract-btn" disabled>
+                <span class="btn-text">Extract & Validate</span>
+            </button>
+            <div id="loading-container" class="hidden">
+                <div class="loading-text">AI is processing documents...</div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card result-section hidden" id="result-section">
+            <h2>Validation Report</h2>
+            <div id="validation-status" class="validation-status"></div>
+            <div class="validation-results" id="validation-results"></div>
+            <h3>Raw Data</h3>
+            <div class="result-content" id="result-content"></div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
