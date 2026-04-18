@@ -201,48 +201,90 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
         let aiModel = 'openrouter/free';
+        let isGeminiFormat = false;
         
-        // Auto-detect OpenAI key vs OpenRouter
-        if (!apiKey.startsWith('sk-or-v1-')) {
+        // Auto-detect key type
+        if (apiKey.startsWith('AIza')) {
+            apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            isGeminiFormat = true;
+        } else if (!apiKey.startsWith('sk-or-v1-')) {
             apiUrl = 'https://api.openai.com/v1/chat/completions';
             aiModel = 'gpt-4o-mini'; // Extremely fast and supports vision + json formatting natively
         }
 
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-                const payload = {
-                    model: aiModel, 
-                    max_tokens: 4096,
-                    messages: [
-                        {
-                            role: "user",
-                            content: [
-                                { type: "text", text: prompt },
-                                { type: "image_url", image_url: { url: imageBase64 } }
-                            ]
-                        }
-                    ]
+                let payload;
+                let headers = {
+                    'Content-Type': 'application/json'
                 };
 
-                // OpenAI guarantees proper JSON output with this flag
-                if (apiUrl === 'https://api.openai.com/v1/chat/completions') {
-                    payload.response_format = { type: "json_object" };
+                if (isGeminiFormat) {
+                    const base64Data = imageBase64.split(',')[1];
+                    const mimeType = imageBase64.split(';')[0].split(':')[1];
+
+                    payload = {
+                        contents: [
+                            {
+                                parts: [
+                                    { text: prompt },
+                                    {
+                                        inline_data: {
+                                            mime_type: mimeType || 'image/jpeg',
+                                            data: base64Data
+                                        }
+                                    }
+                                ]
+                            }
+                        ],
+                        generationConfig: {
+                            responseMimeType: "application/json"
+                        }
+                    };
+                } else {
+                    headers['Authorization'] = `Bearer ${apiKey}`;
+                    headers['HTTP-Referer'] = window.location.href; // Ignored by OpenAI, required by OpenRouter
+                    headers['X-Title'] = 'Ingredient Extractor';
+
+                    payload = {
+                        model: aiModel, 
+                        max_tokens: 4096,
+                        messages: [
+                            {
+                                role: "user",
+                                content: [
+                                    { type: "text", text: prompt },
+                                    { type: "image_url", image_url: { url: imageBase64 } }
+                                ]
+                            }
+                        ]
+                    };
+
+                    // OpenAI guarantees proper JSON output with this flag
+                    if (apiUrl === 'https://api.openai.com/v1/chat/completions') {
+                        payload.response_format = { type: "json_object" };
+                    }
                 }
 
                 const response = await fetch(apiUrl, {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${apiKey}`,
-                        'Content-Type': 'application/json',
-                        'HTTP-Referer': window.location.href, // Ignored by OpenAI, required by OpenRouter
-                        'X-Title': 'Ingredient Extractor'
-                    },
+                    headers: headers,
                     body: JSON.stringify(payload)
                 });
 
                 const data = await response.json();
-                if (!response.ok) throw new Error(data.error?.message || 'API Request Failed');
-                return data.choices?.[0]?.message?.content || '{}';
+                
+                if (!response.ok) {
+                    const errorMessage = isGeminiFormat ? data.error?.message : data.error?.message;
+                    throw new Error(errorMessage || 'API Request Failed');
+                }
+                
+                if (isGeminiFormat) {
+                    if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Invalid response structure from Gemini API");
+                    return data.candidates[0].content.parts[0].text;
+                } else {
+                    return data.choices?.[0]?.message?.content || '{}';
+                }
             } catch (error) {
                 lastError = error;
                 console.warn(`Attempt ${attempt} failed:`, error.message);
