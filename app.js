@@ -359,7 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
         resultContent.textContent = '';
 
         try {
-            const templatePrompt = `Extract the list of ingredients and their percentages from the template document. Exclude any ingredients that appear in any section with the words 'No etiquetables', such as 'Alergenos No etiquetables'. Return the result strictly as a valid JSON object with this format exactly: {"ingredients": [{"name": "string", "percentage": number}]}. Do not include any extra text.`;
+            const templatePrompt = `Extract the list of ingredients and their percentages from the template document. Exclude any ingredients that appear in any section with the words 'No etiquetables', such as 'Alergenos No etiquetables', but make sure to include others such as 'Alergenos etiquetables'. Return the result strictly as a valid JSON object with this format exactly: {"ingredients": [{"name": "string", "percentage": number}]}. Do not include any extra text.`;
             const labelPrompt = `Extract the list of ingredients from the product label in the exact order they appear. Return strictly as a valid JSON object with this format exactly: {"ingredients": ["string", "string"]}. Do not include any extra text.`;
 
             let templateResponseText = await fetchAiExtraction(apiKey, templateBase64, templatePrompt);
