@@ -297,6 +297,55 @@ document.addEventListener('DOMContentLoaded', () => {
         throw lastError;
     }
 
+    function drawMappingLines(connections) {
+        const container = document.getElementById('comparison-container');
+        const svg = document.getElementById('comparison-svg');
+        if (!container || !svg) return;
+
+        svg.innerHTML = `
+            <defs>
+                <marker id="arrow-matched" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(16, 185, 129, 0.6)" />
+                </marker>
+                <marker id="arrow-misordered" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(59, 130, 246, 0.6)" />
+                </marker>
+            </defs>
+        `;
+
+        const containerRect = container.getBoundingClientRect();
+
+        connections.forEach(conn => {
+            const fromEl = document.getElementById(conn.from);
+            const toEl = document.getElementById(conn.to);
+            if (!fromEl || !toEl) return;
+
+            const fromRect = fromEl.getBoundingClientRect();
+            const toRect = toEl.getBoundingClientRect();
+
+            // Calculate anchor points
+            const startX = fromRect.right - containerRect.left;
+            const startY = fromRect.top + (fromRect.height / 2) - containerRect.top;
+
+            const endX = toRect.left - containerRect.left;
+            const endY = toRect.top + (toRect.height / 2) - containerRect.top;
+
+            const controlOffset = (endX - startX) / 2;
+            const d = `M ${startX} ${startY} C ${startX + controlOffset} ${startY}, ${endX - controlOffset} ${endY}, ${endX} ${endY}`;
+
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', d);
+            
+            const isMisordered = conn.status === 'misordered';
+            path.setAttribute('stroke', isMisordered ? 'rgba(59, 130, 246, 0.6)' : 'rgba(16, 185, 129, 0.6)');
+            path.setAttribute('stroke-width', '2');
+            path.setAttribute('fill', 'none');
+            path.setAttribute('marker-end', isMisordered ? 'url(#arrow-misordered)' : 'url(#arrow-matched)');
+
+            svg.appendChild(path);
+        });
+    }
+
     extractBtn.addEventListener('click', async () => {
         const apiKey = apiKeyInput.value.trim();
         if (!apiKey || !templateBase64 || !labelBase64) return;
@@ -314,11 +363,9 @@ document.addEventListener('DOMContentLoaded', () => {
             let templateResponseText = await fetchAiExtraction(apiKey, templateBase64, templatePrompt);
             let labelResponseText = await fetchAiExtraction(apiKey, labelBase64, labelPrompt);
 
-            // Strip asterisks globally from the raw text so they don't show up in the Raw Data view
+            // Clean asterisks globally from the raw text
             templateResponseText = templateResponseText.replace(/\*/g, '');
             labelResponseText = labelResponseText.replace(/\*/g, '');
-
-            resultContent.textContent = `TEMPLATE JSON:\n${templateResponseText}\n\nLABEL JSON:\n${labelResponseText}`;
 
             let templateJson, labelJson;
             try {
@@ -387,6 +434,73 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
+            // Build the Mapping View
+            const templateNodes = templateItems.map((item, index) => {
+                const normName = normalizeIngredient(item.name);
+                let status = 'matched';
+                if (!normLabelItems.includes(normName)) {
+                    status = 'missing';
+                }
+                const pctNum = item.percentage != null ? parseFloat(item.percentage) : null;
+                return { id: `tpl-${index}`, name: item.name, normName, status, percentage: item.percentage, pctNum };
+            });
+
+            const labelNodes = labelItems.map((name, index) => {
+                const normName = normalizeIngredient(name);
+                let status = 'matched';
+                if (!normTemplateMap.has(normName)) {
+                    status = 'unnecessary';
+                } else if (misordered.includes(name)) {
+                    status = 'misordered';
+                }
+                return { id: `lbl-${index}`, name, normName, status };
+            });
+
+            const connections = [];
+            templateNodes.forEach(t => {
+                if (t.status !== 'missing') {
+                    labelNodes.forEach(l => {
+                        if (l.normName === t.normName) {
+                            connections.push({ from: t.id, to: l.id, status: l.status });
+                        }
+                    });
+                }
+            });
+
+            let templateColHtml = '';
+            let separatorAdded = false;
+            templateNodes.forEach(t => {
+                if (!separatorAdded && t.pctNum !== null && t.pctNum < 1) {
+                    templateColHtml += `<div class="less-than-one-separator"><span>&lt; 1%</span></div>`;
+                    separatorAdded = true;
+                }
+                const pctText = t.percentage != null ? t.percentage + (String(t.percentage).includes('%') ? '' : '%') : '';
+                templateColHtml += `
+                <div class="template-item-wrapper">
+                    <div class="percentage-badge">${pctText}</div>
+                    <div class="ing-item ${t.status}" id="${t.id}">${t.name}</div>
+                </div>
+                `;
+            });
+
+            let mappingHtml = `
+            <div class="comparison-wrapper">
+                <div class="comparison-container" id="comparison-container">
+                    <svg class="comparison-svg" id="comparison-svg"></svg>
+                    <div class="comparison-column" id="template-col">
+                        <h4>Template</h4>
+                        ${templateColHtml}
+                    </div>
+                    <div class="comparison-column" id="label-col">
+                        <h4>Label</h4>
+                        ${labelNodes.map(l => `<div class="ing-item ${l.status}" id="${l.id}">${l.name}</div>`).join('')}
+                    </div>
+                </div>
+            </div>
+            `;
+            
+            resultContent.innerHTML = mappingHtml;
+
             // Render Validation Result
             let isSuccess = missing.length === 0 && unnecessary.length === 0 && misordered.length === 0;
 
@@ -426,6 +540,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             resultSection.classList.remove('hidden');
             resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            // Draw lines after DOM is updated
+            setTimeout(() => {
+                drawMappingLines(connections);
+                if (window._mappingResizeObserver) {
+                    window._mappingResizeObserver.disconnect();
+                }
+                const container = document.getElementById('comparison-container');
+                if (container) {
+                    window._mappingResizeObserver = new ResizeObserver(() => drawMappingLines(connections));
+                    window._mappingResizeObserver.observe(container);
+                }
+            }, 100);
 
         } catch (error) {
             validationStatus.className = 'validation-status error';
