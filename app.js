@@ -198,29 +198,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchAiExtraction(apiKey, imageBase64, prompt, maxRetries = 3) {
         let lastError = null;
+
+        let apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+        let aiModel = 'openrouter/free';
+        
+        // Auto-detect OpenAI key vs OpenRouter
+        if (!apiKey.startsWith('sk-or-v1-')) {
+            apiUrl = 'https://api.openai.com/v1/chat/completions';
+            aiModel = 'gpt-4o-mini'; // Extremely fast and supports vision + json formatting natively
+        }
+
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-                const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                const payload = {
+                    model: aiModel, 
+                    max_tokens: 4096,
+                    messages: [
+                        {
+                            role: "user",
+                            content: [
+                                { type: "text", text: prompt },
+                                { type: "image_url", image_url: { url: imageBase64 } }
+                            ]
+                        }
+                    ]
+                };
+
+                // OpenAI guarantees proper JSON output with this flag
+                if (apiUrl === 'https://api.openai.com/v1/chat/completions') {
+                    payload.response_format = { type: "json_object" };
+                }
+
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${apiKey}`,
                         'Content-Type': 'application/json',
-                        'HTTP-Referer': window.location.href,
+                        'HTTP-Referer': window.location.href, // Ignored by OpenAI, required by OpenRouter
                         'X-Title': 'Ingredient Extractor'
                     },
-                    body: JSON.stringify({
-                        model: "openrouter/free", 
-                        max_tokens: 4096,
-                        messages: [
-                            {
-                                role: "user",
-                                content: [
-                                    { type: "text", text: prompt },
-                                    { type: "image_url", image_url: { url: imageBase64 } }
-                                ]
-                            }
-                        ]
-                    })
+                    body: JSON.stringify(payload)
                 });
 
                 const data = await response.json();
