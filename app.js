@@ -350,6 +350,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const apiKey = apiKeyInput.value.trim();
         if (!apiKey || !templateBase64 || !labelBase64) return;
 
+        const startTime = performance.now();
+
         setProcessingUI(true, "AI is processing documents...");
         resultSection.classList.add('hidden');
         validationStatus.innerHTML = '';
@@ -504,8 +506,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Render Validation Result
             let isSuccess = missing.length === 0 && unnecessary.length === 0 && misordered.length === 0;
 
+            const timeTaken = ((performance.now() - startTime) / 1000).toFixed(2);
+
             validationStatus.className = 'validation-status ' + (isSuccess ? 'success' : 'error');
-            validationStatus.textContent = isSuccess ? '✅ Validation Passed!' : '❌ Validation Failed';
+            validationStatus.innerHTML = (isSuccess ? '✅ Validation Passed!' : '❌ Validation Failed') + `<div style="font-size: 0.85em; font-weight: normal; margin-top: 5px; opacity: 0.8;">Validation took ${timeTaken} seconds</div>`;
 
             if (!isSuccess) {
                 let html = '';
