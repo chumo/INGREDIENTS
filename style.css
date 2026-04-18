@@ -393,6 +393,7 @@ input[type="password"]:focus {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     margin-top: 1rem;
+    overflow: hidden;
 }
 
 .comparison-container {
@@ -489,22 +490,26 @@ input[type="password"]:focus {
 .less-than-one-separator {
     display: flex;
     align-items: center;
-    margin: 0.25rem 0;
-    color: var(--text-muted);
+    margin: -0.375rem 0; /* Cancel out the parent's flex gap to not affect item separation */
+    height: 0;
+    line-height: 0;
+    color: var(--text-main);
     font-size: 0.8rem;
+    font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 1px;
+    white-space: nowrap;
+    z-index: 0;
 }
 
-.less-than-one-separator::before,
 .less-than-one-separator::after {
     content: "";
-    flex: 1;
-    border-bottom: 1px dashed var(--border-color);
+    flex-shrink: 0;
+    width: 200vw;
+    height: 1px;
+    background-color: var(--text-main);
+    margin-left: 0.75rem;
 }
-
-.less-than-one-separator::before { margin-right: 1rem; }
-.less-than-one-separator::after { margin-left: 1rem; }
 
 #loading-container {
     margin-top: 1rem;
