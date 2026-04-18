@@ -252,8 +252,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const templatePrompt = `Extract the list of ingredients and their percentages from the template document. Exclude any ingredients that appear in any section with the words 'No etiquetables'. Return the result strictly as a valid JSON object with this format exactly: {"ingredients": [{"name": "string", "percentage": number}]}. Do not include any extra text.`;
             const labelPrompt = `Extract the list of ingredients from the product label in the exact order they appear. Return strictly as a valid JSON object with this format exactly: {"ingredients": ["string", "string"]}. Do not include any extra text.`;
 
-            const templateResponseText = await fetchAiExtraction(apiKey, templateBase64, templatePrompt);
-            const labelResponseText = await fetchAiExtraction(apiKey, labelBase64, labelPrompt);
+            let templateResponseText = await fetchAiExtraction(apiKey, templateBase64, templatePrompt);
+            let labelResponseText = await fetchAiExtraction(apiKey, labelBase64, labelPrompt);
+
+            // Strip asterisks globally from the raw text so they don't show up in the Raw Data view
+            templateResponseText = templateResponseText.replace(/\*/g, '');
+            labelResponseText = labelResponseText.replace(/\*/g, '');
 
             resultContent.textContent = `TEMPLATE JSON:\n${templateResponseText}\n\nLABEL JSON:\n${labelResponseText}`;
 
@@ -273,8 +277,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!templateJson.ingredients || !Array.isArray(templateJson.ingredients)) throw new Error("Template JSON structure is missing the 'ingredients' array. The AI model failed to follow instructions.");
             if (!labelJson.ingredients || !Array.isArray(labelJson.ingredients)) throw new Error("Label JSON structure is missing the 'ingredients' array. The AI model failed to follow instructions.");
 
-            const templateItems = templateJson.ingredients;
-            const labelItems = labelJson.ingredients;
+            const templateItems = templateJson.ingredients.map(i => ({
+                ...i,
+                name: i.name.replace(/\*/g, '').trim()
+            }));
+
+            const labelItems = labelJson.ingredients.map(name => name.replace(/\*/g, '').trim());
 
             const normTemplateMap = new Map();
             templateItems.forEach(i => normTemplateMap.set(normalizeIngredient(i.name), i));
