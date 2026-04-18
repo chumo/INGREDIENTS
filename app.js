@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const apiKeyInput = document.getElementById('api-key');
-    
+
     // Template elements
     const templateDropZone = document.getElementById('template-drop-zone');
     const templateFileInput = document.getElementById('template-file-input');
@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const templateImagePreview = document.getElementById('template-image-preview');
     const templateFileInfo = document.getElementById('template-file-info');
     const clearTemplateBtn = document.getElementById('clear-template-file');
-    
+
     // Label elements
     const labelDropZone = document.getElementById('label-drop-zone');
     const labelFileInput = document.getElementById('label-file-input');
@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const extractBtn = document.getElementById('extract-btn');
     const loadingContainer = document.getElementById('loading-container');
     const loadingText = loadingContainer.querySelector('.loading-text');
-    
+
     const resultSection = document.getElementById('result-section');
     const validationStatus = document.getElementById('validation-status');
     const validationResults = document.getElementById('validation-results');
@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (match) {
             jsonString = match[1].trim();
         }
-        
+
         try {
             return JSON.parse(jsonString);
         } catch (e) {
@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
         let aiModel = 'openrouter/free';
         let isGeminiFormat = false;
-        
+
         // Auto-detect key type
         if (apiKey.startsWith('AIza')) {
             apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
@@ -247,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers['X-Title'] = 'Ingredient Extractor';
 
                     payload = {
-                        model: aiModel, 
+                        model: aiModel,
                         max_tokens: 4096,
                         messages: [
                             {
@@ -273,12 +273,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 const data = await response.json();
-                
+
                 if (!response.ok) {
                     const errorMessage = isGeminiFormat ? data.error?.message : data.error?.message;
                     throw new Error(errorMessage || 'API Request Failed');
                 }
-                
+
                 if (isGeminiFormat) {
                     if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Invalid response structure from Gemini API");
                     return data.candidates[0].content.parts[0].text;
@@ -335,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('d', d);
-            
+
             const isMisordered = conn.status === 'misordered';
             path.setAttribute('stroke', isMisordered ? 'rgba(59, 130, 246, 0.6)' : 'rgba(16, 185, 129, 0.6)');
             path.setAttribute('stroke-width', '2');
@@ -357,7 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
         resultContent.textContent = '';
 
         try {
-            const templatePrompt = `Extract the list of ingredients and their percentages from the template document. Exclude any ingredients that appear in any section with the words 'No etiquetables'. Return the result strictly as a valid JSON object with this format exactly: {"ingredients": [{"name": "string", "percentage": number}]}. Do not include any extra text.`;
+            const templatePrompt = `Extract the list of ingredients and their percentages from the template document. Exclude any ingredients that appear in any section with the words 'No etiquetables', such as 'Alergenos No etiquetables'. Return the result strictly as a valid JSON object with this format exactly: {"ingredients": [{"name": "string", "percentage": number}]}. Do not include any extra text.`;
             const labelPrompt = `Extract the list of ingredients from the product label in the exact order they appear. Return strictly as a valid JSON object with this format exactly: {"ingredients": ["string", "string"]}. Do not include any extra text.`;
 
             let templateResponseText = await fetchAiExtraction(apiKey, templateBase64, templatePrompt);
@@ -413,8 +413,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Calculation for misordered
             const strictTemplateItems = templateItems.filter(i => {
-                // If percentage is undefined or null, we might want to default to treating it strict or lenient? 
-                // Let's assume percentage is required. Wait, "less than 1% concentration" means strictly < 1. 
+                // If percentage is undefined or null, we might want to default to treating it strict or lenient?
+                // Let's assume percentage is required. Wait, "less than 1% concentration" means strictly < 1.
                 // Anything >= 1 or missing percentage might be considered strict (we can assume >= 1 if not parsed).
                 const pct = i.percentage != null ? parseFloat(i.percentage) : 100;
                 return pct >= 1;
@@ -498,7 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
             `;
-            
+
             resultContent.innerHTML = mappingHtml;
 
             // Render Validation Result
