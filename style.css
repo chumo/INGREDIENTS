@@ -552,3 +552,29 @@ input[type="password"]:focus {
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
+
+#template-image-preview:hover, #label-image-preview:hover {
+    cursor: crosshair;
+}
+
+/* Lens Effect */
+.lens {
+    position: absolute;
+    border: 3px solid var(--primary);
+    border-radius: 50%;
+    width: 500px;
+    height: 500px;
+    pointer-events: none;
+    z-index: 9999;
+    display: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5), inset 0 0 10px rgba(0,0,0,0.5);
+    background-color: #fff;
+    overflow: hidden;
+}
+
+.lens-img {
+    position: absolute;
+    pointer-events: none;
+    max-width: none !important;
+}
+

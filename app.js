@@ -568,4 +568,52 @@ document.addEventListener('DOMContentLoaded', () => {
             setProcessingUI(false);
         }
     });
+
+    // Lens Effect Setup
+    const globalLens = document.createElement('div');
+    globalLens.className = 'lens';
+    const lensImg = document.createElement('img');
+    lensImg.className = 'lens-img';
+    globalLens.appendChild(lensImg);
+    document.body.appendChild(globalLens);
+
+    function setupLens(image) {
+        const zoom = 5;
+
+        image.addEventListener('mouseenter', () => {
+            if (!image.getAttribute('src')) return;
+            globalLens.style.display = 'block';
+            lensImg.src = image.src;
+        });
+
+        image.addEventListener('mouseleave', () => {
+            globalLens.style.display = 'none';
+        });
+
+        image.addEventListener('mousemove', (e) => {
+            if (!image.getAttribute('src')) return;
+            const rect = image.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const lensWidth = globalLens.offsetWidth || 500;
+            const lensHeight = globalLens.offsetHeight || 500;
+
+            globalLens.style.left = (e.pageX - lensWidth / 2) + 'px';
+            globalLens.style.top = (e.pageY - lensHeight / 2) + 'px';
+
+            const imgWidth = image.clientWidth * zoom;
+            const imgHeight = image.clientHeight * zoom;
+            lensImg.style.width = `${imgWidth}px`;
+            lensImg.style.height = `${imgHeight}px`;
+
+            const imgPosX = (lensWidth / 2) - (x * zoom);
+            const imgPosY = (lensHeight / 2) - (y * zoom);
+            lensImg.style.left = `${imgPosX}px`;
+            lensImg.style.top = `${imgPosY}px`;
+        });
+    }
+
+    setupLens(templateImagePreview);
+    setupLens(labelImagePreview);
 });
