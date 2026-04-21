@@ -202,11 +202,16 @@ document.addEventListener('DOMContentLoaded', () => {
         let apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
         let aiModel = 'openrouter/free';
         let isGeminiFormat = false;
+        let isAnthropicFormat = false;
 
         // Auto-detect key type
         if (apiKey.startsWith('AIza')) {
             apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
             isGeminiFormat = true;
+        } else if (apiKey.startsWith('sk-ant-')) {
+            apiUrl = 'https://api.anthropic.com/v1/messages';
+            isAnthropicFormat = true;
+            aiModel = 'claude-haiku-4-5-20251001';
         } else if (!apiKey.startsWith('sk-or-v1-')) {
             apiUrl = 'https://api.openai.com/v1/chat/completions';
             aiModel = 'gpt-4o-mini'; // Extremely fast and supports vision + json formatting natively
@@ -240,6 +245,34 @@ document.addEventListener('DOMContentLoaded', () => {
                         generationConfig: {
                             responseMimeType: "application/json"
                         }
+                    };
+                } else if (isAnthropicFormat) {
+                    const base64Data = imageBase64.split(',')[1];
+                    const mimeType = imageBase64.split(';')[0].split(':')[1];
+
+                    headers['x-api-key'] = apiKey;
+                    headers['anthropic-version'] = '2023-06-01';
+                    headers['anthropic-dangerous-direct-browser-access'] = 'true';
+
+                    payload = {
+                        model: aiModel,
+                        max_tokens: 4096,
+                        messages: [
+                            {
+                                role: "user",
+                                content: [
+                                    {
+                                        type: "image",
+                                        source: {
+                                            type: "base64",
+                                            media_type: mimeType || 'image/jpeg',
+                                            data: base64Data
+                                        }
+                                    },
+                                    { type: "text", text: prompt }
+                                ]
+                            }
+                        ]
                     };
                 } else {
                     headers['Authorization'] = `Bearer ${apiKey}`;
@@ -282,6 +315,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isGeminiFormat) {
                     if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Invalid response structure from Gemini API");
                     return data.candidates[0].content.parts[0].text;
+                } else if (isAnthropicFormat) {
+                    if (!data.content?.[0]?.text) throw new Error("Invalid response structure from Anthropic API");
+                    return data.content[0].text;
                 } else {
                     return data.choices?.[0]?.message?.content || '{}';
                 }
