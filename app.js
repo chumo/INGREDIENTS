@@ -6,7 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const templateFileInput = document.getElementById('template-file-input');
     const templateUploadContent = document.getElementById('template-upload-content');
     const templatePreviewContainer = document.getElementById('template-preview-container');
-    const templateImagePreview = document.getElementById('template-image-preview');
+    const templatePdfName = document.getElementById('template-pdf-name');
+    const templatePdfMeta = document.getElementById('template-pdf-meta');
     const templateFileInfo = document.getElementById('template-file-info');
     const clearTemplateBtn = document.getElementById('clear-template-file');
 
@@ -28,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const validationResults = document.getElementById('validation-results');
     const resultContent = document.getElementById('result-content');
 
-    let templateBase64 = null;
+    let templatePdfText = null;  // raw text extracted from the template PDF
     let labelBase64 = null;
 
     // Load saved API key if exists
@@ -65,13 +66,14 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDropZone(templateDropZone, templateFileInput, async (file) => {
         try {
             setProcessingUI(true, "Processing template...");
+            if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                throw new Error("The template must be a PDF document.");
+            }
+            const { text, pageCount } = await parsePdfText(file);
+            templatePdfText = text;
+            templatePdfName.textContent = file.name;
+            templatePdfMeta.textContent = `${pageCount} page${pageCount !== 1 ? 's' : ''} · ${(file.size / 1024).toFixed(0)} KB · ${text.length.toLocaleString()} characters extracted`;
             templateFileInfo.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
-            if (file.type === 'application/pdf') {
-                templateBase64 = await renderPdfToImage(file);
-            } else if (file.type.startsWith('image/')) {
-                templateBase64 = await readImageToBase64(file);
-            } else throw new Error("Unsupported template file type.");
-            templateImagePreview.src = templateBase64;
             templateUploadContent.classList.add('hidden');
             templatePreviewContainer.classList.remove('hidden');
             validateState();
@@ -105,8 +107,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     clearTemplateBtn.addEventListener('click', () => {
-        templateBase64 = null;
+        templatePdfText = null;
         templateFileInput.value = '';
+        templatePdfName.textContent = '';
+        templatePdfMeta.textContent = '';
         templateUploadContent.classList.remove('hidden');
         templatePreviewContainer.classList.add('hidden');
         resultSection.classList.add('hidden');
@@ -146,9 +150,33 @@ document.addEventListener('DOMContentLoaded', () => {
         return canvas.toDataURL('image/jpeg', 0.8);
     }
 
+    // Parse all text from a PDF using PDF.js (no rendering needed)
+    async function parsePdfText(file) {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const pageCount = pdf.numPages;
+        const pageTexts = [];
+        for (let i = 1; i <= pageCount; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            // Join text items, preserving line breaks via transform y-position changes
+            let lastY = null;
+            let pageText = '';
+            for (const item of content.items) {
+                if (lastY !== null && Math.abs(item.transform[5] - lastY) > 2) {
+                    pageText += '\n';
+                }
+                pageText += item.str;
+                lastY = item.transform[5];
+            }
+            pageTexts.push(pageText.trim());
+        }
+        return { text: pageTexts.join('\n\n--- Page Break ---\n\n'), pageCount };
+    }
+
     function validateState() {
         const hasKey = apiKeyInput.value.trim().length > 0;
-        extractBtn.disabled = !(hasKey && templateBase64 && labelBase64);
+        extractBtn.disabled = !(hasKey && templatePdfText && labelBase64);
     }
 
     function setProcessingUI(isLoading, text = "") {
@@ -196,6 +224,88 @@ document.addEventListener('DOMContentLoaded', () => {
     function normalizeIngredient(str) {
         // match exactly except for case and asterisks
         return str.toLowerCase().replace(/\*/g, '').trim();
+    }
+
+    // Text-only AI call: sends the document text inline in the prompt (no image attachment).
+    async function fetchAiTextExtraction(apiKey, documentText, prompt, maxRetries = 3) {
+        const fullPrompt = `${prompt}\n\n=== DOCUMENT TEXT START ===\n${documentText}\n=== DOCUMENT TEXT END ===`;
+        let lastError = null;
+
+        let apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+        let aiModel = 'openrouter/free';
+        let isGeminiFormat = false;
+        let isAnthropicFormat = false;
+
+        if (apiKey.startsWith('AIza')) {
+            apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            isGeminiFormat = true;
+        } else if (apiKey.startsWith('sk-ant-')) {
+            apiUrl = 'https://api.anthropic.com/v1/messages';
+            isAnthropicFormat = true;
+            aiModel = 'claude-haiku-4-5-20251001';
+        } else if (!apiKey.startsWith('sk-or-v1-')) {
+            apiUrl = 'https://api.openai.com/v1/chat/completions';
+            aiModel = 'gpt-4o-mini';
+        }
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                let payload;
+                let headers = { 'Content-Type': 'application/json' };
+
+                if (isGeminiFormat) {
+                    payload = {
+                        contents: [{ parts: [{ text: fullPrompt }] }],
+                        generationConfig: { responseMimeType: "application/json" }
+                    };
+                } else if (isAnthropicFormat) {
+                    headers['x-api-key'] = apiKey;
+                    headers['anthropic-version'] = '2023-06-01';
+                    headers['anthropic-dangerous-direct-browser-access'] = 'true';
+                    payload = {
+                        model: aiModel,
+                        max_tokens: 4096,
+                        messages: [{ role: "user", content: [{ type: "text", text: fullPrompt }] }]
+                    };
+                } else {
+                    headers['Authorization'] = `Bearer ${apiKey}`;
+                    headers['HTTP-Referer'] = window.location.href;
+                    headers['X-Title'] = 'Ingredient Extractor';
+                    payload = {
+                        model: aiModel,
+                        max_tokens: 4096,
+                        messages: [{ role: "user", content: fullPrompt }]
+                    };
+                    if (apiUrl === 'https://api.openai.com/v1/chat/completions') {
+                        payload.response_format = { type: "json_object" };
+                    }
+                }
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error?.message || 'API Request Failed');
+
+                if (isGeminiFormat) {
+                    if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Invalid response structure from Gemini API");
+                    return data.candidates[0].content.parts[0].text;
+                } else if (isAnthropicFormat) {
+                    if (!data.content?.[0]?.text) throw new Error("Invalid response structure from Anthropic API");
+                    return data.content[0].text;
+                } else {
+                    return data.choices?.[0]?.message?.content || '{}';
+                }
+            } catch (error) {
+                lastError = error;
+                console.warn(`Text extraction attempt ${attempt} failed:`, error.message);
+                if (attempt < maxRetries) await new Promise(r => setTimeout(r, 2000 * attempt));
+            }
+        }
+        throw lastError;
     }
 
     async function fetchAiExtraction(apiKey, imageBase64, prompt, maxRetries = 3) {
@@ -386,7 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     extractBtn.addEventListener('click', async () => {
         const apiKey = apiKeyInput.value.trim();
-        if (!apiKey || !templateBase64 || !labelBase64) return;
+        if (!apiKey || !templatePdfText || !labelBase64) return;
 
         const startTime = performance.now();
 
@@ -404,7 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
 Return exactly this JSON format: {"marca": "string", "proyecto": "string", "formula": "string", "ensayo": "string", "ingredients": [{"name": "string", "percentage": number}]}`;
             const labelPrompt = `Extract the list of ingredients from the product label in the exact order they appear. Return strictly as a valid JSON object with this format exactly: {"ingredients": ["string", "string"]}. Do not include any extra text.`;
 
-            let templateResponseText = await fetchAiExtraction(apiKey, templateBase64, templatePrompt);
+            let templateResponseText = await fetchAiTextExtraction(apiKey, templatePdfText, templatePrompt);
             let labelResponseText = await fetchAiExtraction(apiKey, labelBase64, labelPrompt);
 
             // Clean asterisks globally from the raw text
@@ -871,6 +981,5 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
         });
     }
 
-    setupLens(templateImagePreview);
     setupLens(labelImagePreview);
 });

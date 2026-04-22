@@ -277,6 +277,47 @@ input[type="password"]:focus {
     color: var(--text-muted);
 }
 
+/* PDF document preview card (used in the Template section) */
+.pdf-doc-preview {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 10px;
+    margin: 1rem 0 0.5rem;
+    text-align: left;
+    transition: border-color 0.2s;
+}
+
+.pdf-doc-preview svg {
+    color: var(--primary);
+    flex-shrink: 0;
+    opacity: 0.9;
+}
+
+.pdf-doc-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.pdf-doc-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-main);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pdf-doc-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
 .hidden {
     display: none !important;
 }
@@ -546,14 +587,14 @@ input[type="password"]:focus {
     100% { transform: translateX(200%); }
 }
 
-#image-preview, #template-image-preview, #label-image-preview {
+#image-preview, #label-image-preview {
     max-width: 100%;
     max-height: 300px;
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
-#template-image-preview:hover, #label-image-preview:hover {
+#label-image-preview:hover {
     cursor: crosshair;
 }
 

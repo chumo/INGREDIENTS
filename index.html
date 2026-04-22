@@ -47,12 +47,18 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                     <h3>Drag & Drop Template</h3>
-                    <p>Supports PDF, PNG, JPG, JPEG</p>
-                    <input type="file" id="template-file-input" accept=".pdf,image/png,image/jpeg,image/jpg" hidden>
+                    <p>PDF documents only</p>
+                    <input type="file" id="template-file-input" accept=".pdf,application/pdf" hidden>
                     <button class="btn btn-primary" onclick="document.getElementById('template-file-input').click()">Browse Files</button>
                 </div>
                 <div id="template-preview-container" class="hidden">
-                    <img id="template-image-preview" src="" alt="Template Preview">
+                    <div class="pdf-doc-preview" id="template-pdf-preview">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="32" height="32"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        <div class="pdf-doc-info">
+                            <div class="pdf-doc-name" id="template-pdf-name"></div>
+                            <div class="pdf-doc-meta" id="template-pdf-meta"></div>
+                        </div>
+                    </div>
                     <div class="file-info" id="template-file-info"></div>
                     <button class="btn btn-secondary" id="clear-template-file">Clear</button>
                 </div>
