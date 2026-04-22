@@ -110,6 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
         templateUploadContent.classList.remove('hidden');
         templatePreviewContainer.classList.add('hidden');
         resultSection.classList.add('hidden');
+        document.getElementById('download-pdf-btn').style.display = 'none';
         validateState();
     });
 
@@ -119,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
         labelUploadContent.classList.remove('hidden');
         labelPreviewContainer.classList.add('hidden');
         resultSection.classList.add('hidden');
+        document.getElementById('download-pdf-btn').style.display = 'none';
         validateState();
     });
 
@@ -390,6 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setProcessingUI(true, "AI is processing documents...");
         resultSection.classList.add('hidden');
+        document.getElementById('download-pdf-btn').style.display = 'none';
         validationStatus.innerHTML = '';
         validationResults.innerHTML = '';
         resultContent.textContent = '';
@@ -451,9 +454,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Calculation for misordered
             const strictTemplateItems = templateItems.filter(i => {
-                // If percentage is undefined or null, we might want to default to treating it strict or lenient?
-                // Let's assume percentage is required. Wait, "less than 1% concentration" means strictly < 1.
-                // Anything >= 1 or missing percentage might be considered strict (we can assume >= 1 if not parsed).
                 const pct = i.percentage != null ? parseFloat(i.percentage) : 100;
                 return pct >= 1;
             });
@@ -581,6 +581,27 @@ document.addEventListener('DOMContentLoaded', () => {
             resultSection.classList.remove('hidden');
             resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+            const downloadBtn = document.getElementById('download-pdf-btn');
+            if (downloadBtn) {
+                downloadBtn.style.display = 'flex';
+                // Remove previous event listeners by cloning
+                const newBtn = downloadBtn.cloneNode(true);
+                downloadBtn.parentNode.replaceChild(newBtn, downloadBtn);
+                newBtn.addEventListener('click', () => {
+                    const originalHTML = newBtn.innerHTML;
+                    newBtn.innerHTML = 'Generating...';
+                    newBtn.disabled = true;
+                    // Small delay to let the button text update render
+                    setTimeout(() => {
+                        generatePdfReport(templateNodes, isSuccess, missing, unnecessary, misordered, timeTaken)
+                            .finally(() => {
+                                newBtn.innerHTML = originalHTML;
+                                newBtn.disabled = false;
+                            });
+                    }, 50);
+                });
+            }
+
             // Draw lines after DOM is updated
             setTimeout(() => {
                 drawMappingLines(connections);
@@ -604,6 +625,168 @@ document.addEventListener('DOMContentLoaded', () => {
             setProcessingUI(false);
         }
     });
+
+    function generatePdfReport(templateNodes, isSuccess, missing, unnecessary, misordered, timeTaken) {
+        // Use jsPDF directly — no html2canvas / DOM capture needed, fully reliable
+        var jsPDFClass = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+        if (!jsPDFClass) { alert('PDF library not loaded. Please refresh the page.'); return Promise.resolve(); }
+
+        var doc = new jsPDFClass({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        var pageW = doc.internal.pageSize.getWidth();
+        var pageH = doc.internal.pageSize.getHeight();
+        var margin = 15;
+        var contentW = pageW - margin * 2;
+        var y = margin;
+        var pctColW = 30;
+        var nameColW = contentW - pctColW;
+        var rowH = 7;
+
+        function checkPage(needed) {
+            if (y + needed > pageH - margin) {
+                doc.addPage();
+                y = margin;
+            }
+        }
+
+        // --- Header ---
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(18);
+        doc.setTextColor(59, 130, 246);
+        doc.text('Ingredient Validation Report', pageW / 2, y + 7, { align: 'center' });
+        y += 12;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        doc.text('Generated on ' + new Date().toLocaleString(), pageW / 2, y, { align: 'center' });
+        y += 5;
+
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.3);
+        doc.line(margin, y, pageW - margin, y);
+        y += 8;
+
+        // --- Ingredients Section ---
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(30, 41, 59);
+        doc.text('Ingredients in Template', margin, y);
+        y += 6;
+
+        // Table header row
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(226, 232, 240);
+        doc.rect(margin, y, nameColW, rowH, 'FD');
+        doc.rect(margin + nameColW, y, pctColW, rowH, 'FD');
+        doc.setFontSize(10);
+        doc.setTextColor(30, 41, 59);
+        doc.text('Ingredient', margin + 2, y + rowH / 2 + 1.5);
+        doc.text('Percentage', margin + contentW - 2, y + rowH / 2 + 1.5, { align: 'right' });
+        y += rowH;
+
+        // Table data rows
+        var separatorAdded = false;
+        doc.setFont('helvetica', 'normal');
+        templateNodes.forEach(function(t) {
+            if (!separatorAdded && t.pctNum !== null && t.pctNum < 1) {
+                checkPage(rowH);
+                doc.setFillColor(241, 245, 249);
+                doc.setDrawColor(226, 232, 240);
+                doc.rect(margin, y, contentW, rowH, 'FD');
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(9);
+                doc.setTextColor(100, 116, 139);
+                doc.text('< 1% CONCENTRATION THRESHOLD', pageW / 2, y + rowH / 2 + 1.5, { align: 'center' });
+                doc.setFont('helvetica', 'normal');
+                y += rowH;
+                separatorAdded = true;
+            }
+
+            checkPage(rowH);
+            var pctText = t.percentage != null ? String(t.percentage) + (String(t.percentage).includes('%') ? '' : '%') : 'N/A';
+            var name = t.name;
+            // Wrap long names
+            var lines = doc.splitTextToSize(name, nameColW - 4);
+            var thisRowH = Math.max(rowH, lines.length * 5 + 2);
+            checkPage(thisRowH);
+
+            doc.setFillColor(255, 255, 255);
+            doc.setDrawColor(226, 232, 240);
+            doc.rect(margin, y, nameColW, thisRowH, 'FD');
+            doc.rect(margin + nameColW, y, pctColW, thisRowH, 'FD');
+
+            doc.setFontSize(10);
+            doc.setTextColor(51, 65, 85);
+            doc.text(lines, margin + 2, y + 4.8);
+
+            doc.setTextColor(71, 85, 105);
+            doc.text(pctText, margin + contentW - 2, y + thisRowH / 2 + 1.5, { align: 'right' });
+            y += thisRowH;
+        });
+
+        y += 6;
+
+        // --- Validation Results ---
+        checkPage(16);
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.3);
+        doc.line(margin, y, pageW - margin, y);
+        y += 6;
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(30, 41, 59);
+        doc.text('Validation Results', margin, y);
+        y += 7;
+
+        if (isSuccess) {
+            checkPage(12);
+            doc.setFillColor(220, 252, 231);
+            doc.setDrawColor(134, 239, 172);
+            doc.roundedRect(margin, y, contentW, 10, 2, 2, 'FD');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.setTextColor(22, 101, 52);
+            doc.text('Validation Passed in ' + timeTaken + ' s — All ingredients match the template properly.', margin + 3, y + 6.5);
+            y += 14;
+        } else {
+            checkPage(12);
+            doc.setFillColor(254, 226, 226);
+            doc.setDrawColor(252, 165, 165);
+            doc.roundedRect(margin, y, contentW, 10, 2, 2, 'FD');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.setTextColor(153, 27, 27);
+            doc.text('Validation Failed (' + timeTaken + ' seconds)', margin + 3, y + 6.5);
+            y += 14;
+
+            function renderList(title, items, r, g, b) {
+                if (!items.length) return;
+                checkPage(10 + items.length * 6);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.setTextColor(r, g, b);
+                doc.text(title + ' (' + items.length + ')', margin, y);
+                y += 5;
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(71, 85, 105);
+                items.forEach(function(item) {
+                    checkPage(6);
+                    var itemLines = doc.splitTextToSize('• ' + item, contentW - 5);
+                    doc.text(itemLines, margin + 3, y);
+                    y += itemLines.length * 5;
+                });
+                y += 4;
+            }
+
+            renderList('Missing Ingredients', missing, 234, 88, 12);
+            renderList('Unnecessary Ingredients', unnecessary, 244, 63, 94);
+            renderList('Misordered Ingredients', misordered, 59, 130, 246);
+        }
+
+        doc.save('validation-report.pdf');
+        return Promise.resolve();
+    }
 
     // Lens Effect Setup
     const globalLens = document.createElement('div');
