@@ -398,7 +398,10 @@ document.addEventListener('DOMContentLoaded', () => {
         resultContent.textContent = '';
 
         try {
-            const templatePrompt = `Extract the list of ingredients and their percentages from the template document. Exclude any ingredients that appear in any section with the words 'No etiquetables', such as 'Alergenos No etiquetables', but make sure to include others such as 'Alergenos etiquetables'. Return the result strictly as a valid JSON object with this format exactly: {"ingredients": [{"name": "string", "percentage": number}]}. Do not include any extra text.`;
+            const templatePrompt = `Extract the following from the template document and return strictly as a valid JSON object with no extra text:
+1. The metadata fields: "marca", "proyecto", "formula", "ensayo" (look for labels like Marca, Proyecto, Fórmula/Formula, Ensayo in the document header or info section; use empty string if not found).
+2. The list of ingredients and their percentages. Exclude any ingredients in sections labelled 'No etiquetables' (e.g. 'Alergenos No etiquetables'), but include those in sections like 'Alergenos etiquetables'.
+Return exactly this JSON format: {"marca": "string", "proyecto": "string", "formula": "string", "ensayo": "string", "ingredients": [{"name": "string", "percentage": number}]}`;
             const labelPrompt = `Extract the list of ingredients from the product label in the exact order they appear. Return strictly as a valid JSON object with this format exactly: {"ingredients": ["string", "string"]}. Do not include any extra text.`;
 
             let templateResponseText = await fetchAiExtraction(apiKey, templateBase64, templatePrompt);
@@ -423,6 +426,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!templateJson.ingredients || !Array.isArray(templateJson.ingredients)) throw new Error("Template JSON structure is missing the 'ingredients' array. The AI model failed to follow instructions.");
             if (!labelJson.ingredients || !Array.isArray(labelJson.ingredients)) throw new Error("Label JSON structure is missing the 'ingredients' array. The AI model failed to follow instructions.");
+
+            const templateMeta = {
+                marca:    templateJson.marca    || '',
+                proyecto: templateJson.proyecto || '',
+                formula:  templateJson.formula  || '',
+                ensayo:   templateJson.ensayo   || ''
+            };
 
             const templateItems = templateJson.ingredients.map(i => ({
                 ...i,
@@ -593,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     newBtn.disabled = true;
                     // Small delay to let the button text update render
                     setTimeout(() => {
-                        generatePdfReport(templateNodes, isSuccess, missing, unnecessary, misordered, timeTaken)
+                        generatePdfReport(templateNodes, isSuccess, missing, unnecessary, misordered, templateMeta)
                             .finally(() => {
                                 newBtn.innerHTML = originalHTML;
                                 newBtn.disabled = false;
@@ -626,7 +636,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function generatePdfReport(templateNodes, isSuccess, missing, unnecessary, misordered, timeTaken) {
+    function generatePdfReport(templateNodes, isSuccess, missing, unnecessary, misordered, meta) {
         // Use jsPDF directly — no html2canvas / DOM capture needed, fully reliable
         var jsPDFClass = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
         if (!jsPDFClass) { alert('PDF library not loaded. Please refresh the page.'); return Promise.resolve(); }
@@ -659,7 +669,35 @@ document.addEventListener('DOMContentLoaded', () => {
         doc.setFontSize(9);
         doc.setTextColor(100, 116, 139);
         doc.text('Generated on ' + new Date().toLocaleString(), pageW / 2, y, { align: 'center' });
-        y += 5;
+        y += 7;
+
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.3);
+        doc.line(margin, y, pageW - margin, y);
+        y += 7;
+
+        // --- Metadata fields ---
+        var metaFields = [
+            { label: 'Marca',    value: meta.marca },
+            { label: 'Proyecto', value: meta.proyecto },
+            { label: 'F\u00f3rmula', value: meta.formula },
+            { label: 'Ensayo',   value: meta.ensayo }
+        ];
+        var metaColW = contentW / 2;
+        metaFields.forEach(function(field, i) {
+            var col = i % 2;
+            var xPos = margin + col * metaColW;
+            if (col === 0 && i > 0) { y += 7; }
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(100, 116, 139);
+            doc.text(field.label + ':', xPos, y);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(30, 41, 59);
+            var valLines = doc.splitTextToSize(field.value || '—', metaColW - 25);
+            doc.text(valLines, xPos + 22, y);
+        });
+        y += 10;
 
         doc.setDrawColor(226, 232, 240);
         doc.setLineWidth(0.3);
@@ -747,7 +785,7 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(10);
             doc.setTextColor(22, 101, 52);
-            doc.text('Validation Passed in ' + timeTaken + ' s — All ingredients match the template properly.', margin + 3, y + 6.5);
+            doc.text('Validation Passed — All ingredients match the template properly.', margin + 3, y + 6.5);
             y += 14;
         } else {
             checkPage(12);
@@ -757,7 +795,7 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(10);
             doc.setTextColor(153, 27, 27);
-            doc.text('Validation Failed (' + timeTaken + ' seconds)', margin + 3, y + 6.5);
+            doc.text('Validation Failed', margin + 3, y + 6.5);
             y += 14;
 
             function renderList(title, items, r, g, b) {
