@@ -824,12 +824,10 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
         // Table header row
         doc.setFillColor(248, 250, 252);
         doc.setDrawColor(226, 232, 240);
-        doc.rect(margin, y, nameColW, rowH, 'FD');
-        doc.rect(margin + nameColW, y, pctColW, rowH, 'FD');
+        doc.rect(margin, y, contentW, rowH, 'FD');
         doc.setFontSize(10);
         doc.setTextColor(30, 41, 59);
         doc.text('Ingredient', margin + 2, y + rowH / 2 + 1.5);
-        doc.text('Percentage', margin + contentW - 2, y + rowH / 2 + 1.5, { align: 'right' });
         y += rowH;
 
         // Table data rows
@@ -851,24 +849,20 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
             }
 
             checkPage(rowH);
-            var pctText = t.percentage != null ? String(t.percentage) + (String(t.percentage).includes('%') ? '' : '%') : 'N/A';
             var name = t.name;
             // Wrap long names
-            var lines = doc.splitTextToSize(name, nameColW - 4);
+            var lines = doc.splitTextToSize(name, contentW - 4);
             var thisRowH = Math.max(rowH, lines.length * 5 + 2);
             checkPage(thisRowH);
 
             doc.setFillColor(255, 255, 255);
             doc.setDrawColor(226, 232, 240);
-            doc.rect(margin, y, nameColW, thisRowH, 'FD');
-            doc.rect(margin + nameColW, y, pctColW, thisRowH, 'FD');
+            doc.rect(margin, y, contentW, thisRowH, 'FD');
 
             doc.setFontSize(10);
             doc.setTextColor(51, 65, 85);
             doc.text(lines, margin + 2, y + 4.8);
 
-            doc.setTextColor(71, 85, 105);
-            doc.text(pctText, margin + contentW - 2, y + thisRowH / 2 + 1.5, { align: 'right' });
             y += thisRowH;
         });
 
