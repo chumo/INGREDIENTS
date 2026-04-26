@@ -858,7 +858,7 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
         doc.setFontSize(10);
         doc.setTextColor(30, 41, 59);
         doc.text('Ingredient', margin + 2, y + rowH / 2 + 1.5);
-        doc.text('Concentration', margin + nameColW + concColW / 2, y + rowH / 2 + 1.5, { align: 'center' });
+        doc.text('Concentration*', margin + nameColW + concColW / 2, y + rowH / 2 + 1.5, { align: 'center' });
         y += rowH;
 
         // Table data rows
@@ -907,6 +907,50 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
             y += thisRowH;
         });
 
+        y += 3;
+
+        // Footnote for concentration ranges (3 lines, letters in blue)
+        checkPage(14);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+
+        // Helper: render a string of segments with alternating blue letters and grey text
+        function drawRangeLine(segments, lineY) {
+            var xCursor = margin;
+            segments.forEach(function(seg) {
+                if (seg.blue) {
+                    doc.setTextColor(59, 130, 246);
+                } else {
+                    doc.setTextColor(100, 116, 139);
+                }
+                doc.text(seg.text, xCursor, lineY);
+                xCursor += doc.getTextWidth(seg.text);
+            });
+        }
+
+        // Line 1 — plain grey
+        doc.setTextColor(100, 116, 139);
+        doc.text('*Concentration ranges:', margin, y);
+        y += 4.5;
+
+        // Line 2 — A through E
+        drawRangeLine([
+            { text: 'A', blue: true }, { text: ': 80% to 100%,  ', blue: false },
+            { text: 'B', blue: true }, { text: ': 60% to 80%,  ',  blue: false },
+            { text: 'C', blue: true }, { text: ': 40% to 60%,  ',  blue: false },
+            { text: 'D', blue: true }, { text: ': 20% to 40%,  ',  blue: false },
+            { text: 'E', blue: true }, { text: ': 10% to 20%',      blue: false }
+        ], y);
+        y += 4.5;
+
+        // Line 3 — F through J
+        drawRangeLine([
+            { text: 'F', blue: true }, { text: ': 1% to 10%,  ',    blue: false },
+            { text: 'G', blue: true }, { text: ': 0.5% to 1%,  ',   blue: false },
+            { text: 'H', blue: true }, { text: ': 0.1% to 0.5%,  ', blue: false },
+            { text: 'I', blue: true }, { text: ': 0.05% to 0.1%,  ', blue: false },
+            { text: 'J', blue: true }, { text: ': 0% to 0.05%',     blue: false }
+        ], y);
         y += 6;
 
         // --- Validation Results ---
