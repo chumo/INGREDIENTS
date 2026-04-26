@@ -771,9 +771,22 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
         var margin = 15;
         var contentW = pageW - margin * 2;
         var y = margin;
-        var pctColW = 30;
-        var nameColW = contentW - pctColW;
+        var concColW = 32;  // Concentration column width
+        var nameColW = contentW - concColW;
         var rowH = 7;
+
+        function getConcentrationLabel(pctNum) {
+            if (pctNum === null || pctNum === undefined) return '—';
+            for (var ci = 0; ci < concentrationRanges.length; ci++) {
+                var r = concentrationRanges[ci];
+                if (pctNum >= r.percentageMin && pctNum < r.percentageMax) {
+                    return r.concentrationRange;
+                }
+            }
+            // Edge case: exactly 100 %
+            if (pctNum >= 80) return concentrationRanges[0].concentrationRange;
+            return '—';
+        }
 
         function checkPage(needed) {
             if (y + needed > pageH - margin) {
@@ -839,9 +852,13 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
         doc.setFillColor(248, 250, 252);
         doc.setDrawColor(226, 232, 240);
         doc.rect(margin, y, contentW, rowH, 'FD');
+        // Vertical divider between columns
+        doc.line(margin + nameColW, y, margin + nameColW, y + rowH);
+        doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
         doc.setTextColor(30, 41, 59);
         doc.text('Ingredient', margin + 2, y + rowH / 2 + 1.5);
+        doc.text('Concentration', margin + nameColW + concColW / 2, y + rowH / 2 + 1.5, { align: 'center' });
         y += rowH;
 
         // Table data rows
@@ -864,18 +881,28 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
 
             checkPage(rowH);
             var name = t.name;
-            // Wrap long names
-            var lines = doc.splitTextToSize(name, contentW - 4);
+            // Wrap long names within the ingredient column width
+            var lines = doc.splitTextToSize(name, nameColW - 4);
             var thisRowH = Math.max(rowH, lines.length * 5 + 2);
             checkPage(thisRowH);
 
             doc.setFillColor(255, 255, 255);
             doc.setDrawColor(226, 232, 240);
             doc.rect(margin, y, contentW, thisRowH, 'FD');
+            // Vertical divider
+            doc.line(margin + nameColW, y, margin + nameColW, y + thisRowH);
 
+            doc.setFont('helvetica', 'normal');
             doc.setFontSize(10);
             doc.setTextColor(51, 65, 85);
             doc.text(lines, margin + 2, y + 4.8);
+
+            // Concentration letter (centred in the column)
+            var concLabel = getConcentrationLabel(t.pctNum);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.setTextColor(59, 130, 246);
+            doc.text(concLabel, margin + nameColW + concColW / 2, y + thisRowH / 2 + 1.5, { align: 'center' });
 
             y += thisRowH;
         });
