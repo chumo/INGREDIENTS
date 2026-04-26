@@ -32,6 +32,20 @@ document.addEventListener('DOMContentLoaded', () => {
     let templatePdfText = null;  // raw text extracted from the template PDF
     let labelBase64 = null;
 
+    // table of concentration ranges
+    const concentrationRanges = [
+        { "concentrationRange": "A", "percentageMin": 80.0, "percentageMax": 100.0 },
+        { "concentrationRange": "B", "percentageMin": 60.0, "percentageMax": 80.0 },
+        { "concentrationRange": "C", "percentageMin": 40.0, "percentageMax": 60.0 },
+        { "concentrationRange": "D", "percentageMin": 20.0, "percentageMax": 40.0 },
+        { "concentrationRange": "E", "percentageMin": 10.0, "percentageMax": 20.0 },
+        { "concentrationRange": "F", "percentageMin": 1.0, "percentageMax": 10.0 },
+        { "concentrationRange": "G", "percentageMin": 0.5, "percentageMax": 1.0 },
+        { "concentrationRange": "H", "percentageMin": 0.1, "percentageMax": 0.5 },
+        { "concentrationRange": "I", "percentageMin": 0.05, "percentageMax": 0.1 },
+        { "concentrationRange": "J", "percentageMin": 0.0, "percentageMax": 0.05 }
+    ]
+
     // Load saved API key if exists
     const savedKey = localStorage.getItem('openRouterApiKey');
     if (savedKey) {
