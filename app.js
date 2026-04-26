@@ -945,17 +945,19 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
 
             function renderList(title, items, r, g, b) {
                 if (!items.length) return;
-                checkPage(10 + items.length * 6);
+                // Reserve space for title + at least the first item so the
+                // heading is never stranded alone at the bottom of a page.
+                checkPage(16);
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(10);
                 doc.setTextColor(r, g, b);
                 doc.text(title + ' (' + items.length + ')', margin, y);
-                y += 5;
+                y += 6;
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(71, 85, 105);
                 items.forEach(function(item) {
-                    checkPage(6);
                     var itemLines = doc.splitTextToSize('• ' + item, contentW - 5);
+                    checkPage(itemLines.length * 5);
                     doc.text(itemLines, margin + 3, y);
                     y += itemLines.length * 5;
                 });
