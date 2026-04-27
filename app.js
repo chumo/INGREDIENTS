@@ -565,189 +565,201 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
 
             const labelItems = labelJson.ingredients.map(name => name.replace(/\*/g, '').trim());
 
-            const normTemplateMap = new Map();
-            templateItems.forEach(i => normTemplateMap.set(normalizeIngredient(i.name), i));
+            const labelTextarea = document.getElementById('label-ingredients-edit');
+            labelTextarea.value = labelItems.join(', ');
 
-            const normLabelItems = labelItems.map(name => normalizeIngredient(name));
-            const labelOriginalNames = new Map();
-            labelItems.forEach(name => labelOriginalNames.set(normalizeIngredient(name), name));
+            const initialTimeTaken = ((performance.now() - startTime) / 1000).toFixed(2);
 
-            const missing = [];
-            for (const item of templateItems) {
-                if (!normLabelItems.includes(normalizeIngredient(item.name))) {
-                    missing.push(item.name);
+            const runValidation = (currentLabelItems) => {
+                const normTemplateMap = new Map();
+                templateItems.forEach(i => normTemplateMap.set(normalizeIngredient(i.name), i));
+
+                const normLabelItems = currentLabelItems.map(name => normalizeIngredient(name));
+                const labelOriginalNames = new Map();
+                currentLabelItems.forEach(name => labelOriginalNames.set(normalizeIngredient(name), name));
+
+                const missing = [];
+                for (const item of templateItems) {
+                    if (!normLabelItems.includes(normalizeIngredient(item.name))) {
+                        missing.push(item.name);
+                    }
                 }
-            }
 
-            const unnecessary = [];
-            for (const originalName of labelItems) {
-                if (!normTemplateMap.has(normalizeIngredient(originalName))) {
-                    unnecessary.push(originalName);
+                const unnecessary = [];
+                for (const originalName of currentLabelItems) {
+                    if (!normTemplateMap.has(normalizeIngredient(originalName))) {
+                        unnecessary.push(originalName);
+                    }
                 }
-            }
 
-            // Calculation for misordered
-            const strictTemplateItems = templateItems.filter(i => {
-                const pct = i.percentage != null ? parseFloat(i.percentage) : 100;
-                return pct >= 1;
-            });
-            const strictTemplateNormNames = strictTemplateItems.map(i => normalizeIngredient(i.name));
+                // Calculation for misordered
+                const strictTemplateItems = templateItems.filter(i => {
+                    const pct = i.percentage != null ? parseFloat(i.percentage) : 100;
+                    return pct >= 1;
+                });
+                const strictTemplateNormNames = strictTemplateItems.map(i => normalizeIngredient(i.name));
 
-            const strictLabelNormNames = normLabelItems.filter(name => strictTemplateNormNames.includes(name));
+                const strictLabelNormNames = normLabelItems.filter(name => strictTemplateNormNames.includes(name));
 
-            let expectedIndex = 0;
-            const misordered = [];
-            for (const name of strictLabelNormNames) {
-                const foundIndex = strictTemplateNormNames.indexOf(name);
-                if (foundIndex < expectedIndex) {
-                    misordered.push(labelOriginalNames.get(name));
-                } else {
-                    expectedIndex = foundIndex;
+                let expectedIndex = 0;
+                const misordered = [];
+                for (const name of strictLabelNormNames) {
+                    const foundIndex = strictTemplateNormNames.indexOf(name);
+                    if (foundIndex < expectedIndex) {
+                        misordered.push(labelOriginalNames.get(name));
+                    } else {
+                        expectedIndex = foundIndex;
+                    }
                 }
-            }
 
-            // Build the Mapping View
-            const templateNodes = templateItems.map((item, index) => {
-                const normName = normalizeIngredient(item.name);
-                let status = 'matched';
-                if (!normLabelItems.includes(normName)) {
-                    status = 'missing';
-                }
-                const pctNum = item.percentage != null ? parseFloat(item.percentage) : null;
-                return { id: `tpl-${index}`, name: item.name, normName, status, percentage: item.percentage, pctNum };
-            });
+                // Build the Mapping View
+                const templateNodes = templateItems.map((item, index) => {
+                    const normName = normalizeIngredient(item.name);
+                    let status = 'matched';
+                    if (!normLabelItems.includes(normName)) {
+                        status = 'missing';
+                    }
+                    const pctNum = item.percentage != null ? parseFloat(item.percentage) : null;
+                    return { id: `tpl-${index}`, name: item.name, normName, status, percentage: item.percentage, pctNum };
+                });
 
-            const labelNodes = labelItems.map((name, index) => {
-                const normName = normalizeIngredient(name);
-                let status = 'matched';
-                if (!normTemplateMap.has(normName)) {
-                    status = 'unnecessary';
-                } else if (misordered.includes(name)) {
-                    status = 'misordered';
-                }
-                return { id: `lbl-${index}`, name, normName, status };
-            });
+                const labelNodes = currentLabelItems.map((name, index) => {
+                    const normName = normalizeIngredient(name);
+                    let status = 'matched';
+                    if (!normTemplateMap.has(normName)) {
+                        status = 'unnecessary';
+                    } else if (misordered.includes(name)) {
+                        status = 'misordered';
+                    }
+                    return { id: `lbl-${index}`, name, normName, status };
+                });
 
-            const connections = [];
-            templateNodes.forEach(t => {
-                if (t.status !== 'missing') {
-                    labelNodes.forEach(l => {
-                        if (l.normName === t.normName) {
-                            connections.push({ from: t.id, to: l.id, status: l.status });
-                        }
-                    });
-                }
-            });
+                const connections = [];
+                templateNodes.forEach(t => {
+                    if (t.status !== 'missing') {
+                        labelNodes.forEach(l => {
+                            if (l.normName === t.normName) {
+                                connections.push({ from: t.id, to: l.id, status: l.status });
+                            }
+                        });
+                    }
+                });
 
-            let templateColHtml = '';
-            let separatorAdded = false;
-            templateNodes.forEach(t => {
-                if (!separatorAdded && t.pctNum !== null && t.pctNum < 1) {
-                    templateColHtml += `<div class="less-than-one-separator"><span>&lt; 1%</span></div>`;
-                    separatorAdded = true;
-                }
-                const pctText = t.percentage != null ? t.percentage + (String(t.percentage).includes('%') ? '' : '%') : '';
-                templateColHtml += `
-                <div class="template-item-wrapper">
-                    <div class="percentage-badge">${pctText}</div>
-                    <div class="ing-item ${t.status}" id="${t.id}">${t.name}</div>
+                let templateColHtml = '';
+                let separatorAdded = false;
+                templateNodes.forEach(t => {
+                    if (!separatorAdded && t.pctNum !== null && t.pctNum < 1) {
+                        templateColHtml += `<div class="less-than-one-separator"><span>&lt; 1%</span></div>`;
+                        separatorAdded = true;
+                    }
+                    const pctText = t.percentage != null ? t.percentage + (String(t.percentage).includes('%') ? '' : '%') : '';
+                    templateColHtml += `
+                    <div class="template-item-wrapper">
+                        <div class="percentage-badge">${pctText}</div>
+                        <div class="ing-item ${t.status}" id="${t.id}">${t.name}</div>
+                    </div>
+                    `;
+                });
+
+                let mappingHtml = `
+                <div class="comparison-wrapper">
+                    <div class="comparison-container" id="comparison-container">
+                        <svg class="comparison-svg" id="comparison-svg"></svg>
+                        <div class="comparison-column" id="template-col">
+                            <h4>Template</h4>
+                            ${templateColHtml}
+                        </div>
+                        <div class="comparison-column" id="label-col">
+                            <h4>Label</h4>
+                            ${labelNodes.map(l => `<div class="ing-item ${l.status}" id="${l.id}">${l.name}</div>`).join('')}
+                        </div>
+                    </div>
                 </div>
                 `;
-            });
 
-            let mappingHtml = `
-            <div class="comparison-wrapper">
-                <div class="comparison-container" id="comparison-container">
-                    <svg class="comparison-svg" id="comparison-svg"></svg>
-                    <div class="comparison-column" id="template-col">
-                        <h4>Template</h4>
-                        ${templateColHtml}
-                    </div>
-                    <div class="comparison-column" id="label-col">
-                        <h4>Label</h4>
-                        ${labelNodes.map(l => `<div class="ing-item ${l.status}" id="${l.id}">${l.name}</div>`).join('')}
-                    </div>
-                </div>
-            </div>
-            `;
+                resultContent.innerHTML = mappingHtml;
 
-            resultContent.innerHTML = mappingHtml;
+                // Render Validation Result
+                let isSuccess = missing.length === 0 && unnecessary.length === 0 && misordered.length === 0;
 
-            // Render Validation Result
-            let isSuccess = missing.length === 0 && unnecessary.length === 0 && misordered.length === 0;
+                validationStatus.className = 'validation-status ' + (isSuccess ? 'success' : 'error');
+                validationStatus.innerHTML = (isSuccess ? '✅ Validation Passed!' : '❌ Validation Failed') + `<div style="font-size: 0.85em; font-weight: normal; margin-top: 5px; opacity: 0.8;">Validation took ${initialTimeTaken} seconds</div>`;
 
-            const timeTaken = ((performance.now() - startTime) / 1000).toFixed(2);
-
-            validationStatus.className = 'validation-status ' + (isSuccess ? 'success' : 'error');
-            validationStatus.innerHTML = (isSuccess ? '✅ Validation Passed!' : '❌ Validation Failed') + `<div style="font-size: 0.85em; font-weight: normal; margin-top: 5px; opacity: 0.8;">Validation took ${timeTaken} seconds</div>`;
-
-            if (!isSuccess) {
-                let html = '';
-                if (missing.length > 0) {
-                    html += `
-                        <div class="validation-category missing">
-                            <h4>⚠️ Missing Ingredients (${missing.length})</h4>
-                            <ul>${missing.map(m => `<li>${m}</li>`).join('')}</ul>
-                        </div>
-                    `;
+                if (!isSuccess) {
+                    let html = '';
+                    if (missing.length > 0) {
+                        html += `
+                            <div class="validation-category missing">
+                                <h4>⚠️ Missing Ingredients (${missing.length})</h4>
+                                <ul>${missing.map(m => `<li>${m}</li>`).join('')}</ul>
+                            </div>
+                        `;
+                    }
+                    if (unnecessary.length > 0) {
+                        html += `
+                            <div class="validation-category unnecessary">
+                                <h4>⚠️ Unnecessary Ingredients (${unnecessary.length})</h4>
+                                <ul>${unnecessary.map(m => `<li>${m}</li>`).join('')}</ul>
+                            </div>
+                        `;
+                    }
+                    if (misordered.length > 0) {
+                        html += `
+                            <div class="validation-category misordered">
+                                <h4>⚠️ Misordered Ingredients (${misordered.length})</h4>
+                                <ul>${misordered.map(m => `<li>${m}</li>`).join('')}</ul>
+                            </div>
+                        `;
+                    }
+                    validationResults.innerHTML = html;
+                } else {
+                    validationResults.innerHTML = '<p style="color: var(--text-muted); padding: 1rem; text-align: center;">All ingredients match the template properly.</p>';
                 }
-                if (unnecessary.length > 0) {
-                    html += `
-                        <div class="validation-category unnecessary">
-                            <h4>⚠️ Unnecessary Ingredients (${unnecessary.length})</h4>
-                            <ul>${unnecessary.map(m => `<li>${m}</li>`).join('')}</ul>
-                        </div>
-                    `;
+
+                const downloadBtn = document.getElementById('download-pdf-btn');
+                if (downloadBtn) {
+                    downloadBtn.style.display = 'flex';
+                    // Remove previous event listeners by cloning
+                    const newBtn = downloadBtn.cloneNode(true);
+                    downloadBtn.parentNode.replaceChild(newBtn, downloadBtn);
+                    newBtn.addEventListener('click', () => {
+                        const originalHTML = newBtn.innerHTML;
+                        newBtn.innerHTML = 'Generating...';
+                        newBtn.disabled = true;
+                        // Small delay to let the button text update render
+                        setTimeout(() => {
+                            generatePdfReport(templateNodes, isSuccess, missing, unnecessary, misordered, templateMeta)
+                                .finally(() => {
+                                    newBtn.innerHTML = originalHTML;
+                                    newBtn.disabled = false;
+                                });
+                        }, 50);
+                    });
                 }
-                if (misordered.length > 0) {
-                    html += `
-                        <div class="validation-category misordered">
-                            <h4>⚠️ Misordered Ingredients (${misordered.length})</h4>
-                            <ul>${misordered.map(m => `<li>${m}</li>`).join('')}</ul>
-                        </div>
-                    `;
-                }
-                validationResults.innerHTML = html;
-            } else {
-                validationResults.innerHTML = '<p style="color: var(--text-muted); padding: 1rem; text-align: center;">All ingredients match the template properly.</p>';
-            }
+
+                // Draw lines after DOM is updated
+                setTimeout(() => {
+                    drawMappingLines(connections);
+                    if (window._mappingResizeObserver) {
+                        window._mappingResizeObserver.disconnect();
+                    }
+                    const container = document.getElementById('comparison-container');
+                    if (container) {
+                        window._mappingResizeObserver = new ResizeObserver(() => drawMappingLines(connections));
+                        window._mappingResizeObserver.observe(container);
+                    }
+                }, 100);
+            };
+
+            runValidation(labelItems);
 
             resultSection.classList.remove('hidden');
             resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-            const downloadBtn = document.getElementById('download-pdf-btn');
-            if (downloadBtn) {
-                downloadBtn.style.display = 'flex';
-                // Remove previous event listeners by cloning
-                const newBtn = downloadBtn.cloneNode(true);
-                downloadBtn.parentNode.replaceChild(newBtn, downloadBtn);
-                newBtn.addEventListener('click', () => {
-                    const originalHTML = newBtn.innerHTML;
-                    newBtn.innerHTML = 'Generating...';
-                    newBtn.disabled = true;
-                    // Small delay to let the button text update render
-                    setTimeout(() => {
-                        generatePdfReport(templateNodes, isSuccess, missing, unnecessary, misordered, templateMeta)
-                            .finally(() => {
-                                newBtn.innerHTML = originalHTML;
-                                newBtn.disabled = false;
-                            });
-                    }, 50);
-                });
-            }
-
-            // Draw lines after DOM is updated
-            setTimeout(() => {
-                drawMappingLines(connections);
-                if (window._mappingResizeObserver) {
-                    window._mappingResizeObserver.disconnect();
-                }
-                const container = document.getElementById('comparison-container');
-                if (container) {
-                    window._mappingResizeObserver = new ResizeObserver(() => drawMappingLines(connections));
-                    window._mappingResizeObserver.observe(container);
-                }
-            }, 100);
+            labelTextarea.addEventListener('input', (e) => {
+                const updatedLabelItems = e.target.value.split(',').map(s => s.trim()).filter(s => s.length > 0);
+                runValidation(updatedLabelItems);
+            });
 
         } catch (error) {
             validationStatus.className = 'validation-status error';
