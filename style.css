@@ -619,3 +619,44 @@ input[type="password"]:focus {
     max-width: none !important;
 }
 
+.textarea-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+#label-ingredients-backdrop {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    padding: 0.75rem;
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+    color: transparent;
+    pointer-events: none;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    z-index: 1;
+}
+
+#label-ingredients-edit {
+    position: relative;
+    width: 100%;
+    display: block;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: 1.5;
+    resize: vertical;
+    box-sizing: border-box;
+    background: transparent;
+    color: inherit;
+    z-index: 2;
+    margin: 0;
+}

@@ -32,6 +32,57 @@ document.addEventListener('DOMContentLoaded', () => {
     let templatePdfText = null;  // raw text extracted from the template PDF
     let labelBase64 = null;
 
+    const labelTextarea = document.getElementById('label-ingredients-edit');
+    const labelBackdrop = document.getElementById('label-ingredients-backdrop');
+
+    const ingredientColors = [
+        'rgba(255, 179, 186, 0.4)',
+        'rgba(255, 223, 186, 0.4)',
+        'rgba(255, 255, 186, 0.3)',
+        'rgba(186, 255, 201, 0.4)',
+        'rgba(186, 225, 255, 0.4)',
+        'rgba(212, 240, 240, 0.4)',
+        'rgba(226, 240, 203, 0.4)',
+        'rgba(203, 170, 203, 0.4)'
+    ];
+
+    function updateIngredientsBackdrop(text) {
+        if (!labelBackdrop) return;
+        const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        
+        let html = '';
+        const parts = text.split(',');
+        
+        parts.forEach((part, i) => {
+            const color = ingredientColors[i % ingredientColors.length];
+            const leadingMatch = part.match(/^\s*/);
+            const trailingMatch = part.match(/\s*$/);
+            const leadingSpace = leadingMatch ? leadingMatch[0] : '';
+            const trailingSpace = trailingMatch ? trailingMatch[0] : '';
+            const core = part.substring(leadingSpace.length, part.length - trailingSpace.length);
+            
+            html += escape(leadingSpace);
+            if (core) {
+                html += `<span style="background-color: ${color}; border-radius: 4px; color: transparent;">${escape(core)}</span>`;
+            }
+            html += escape(trailingSpace);
+            
+            if (i < parts.length - 1) {
+                html += ',';
+            }
+        });
+        
+        if (text.endsWith('\n')) html += '&nbsp;';
+        labelBackdrop.innerHTML = html;
+    }
+
+    if (labelTextarea && labelBackdrop) {
+        labelTextarea.addEventListener('scroll', () => {
+            labelBackdrop.scrollTop = labelTextarea.scrollTop;
+            labelBackdrop.scrollLeft = labelTextarea.scrollLeft;
+        });
+    }
+
     // table of concentration ranges
     const concentrationRanges = [
         { "concentrationRange": "A", "percentageMin": 80.0, "percentageMax": 100.0 },
@@ -567,6 +618,7 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
 
             const labelTextarea = document.getElementById('label-ingredients-edit');
             labelTextarea.value = labelItems.join(', ');
+            updateIngredientsBackdrop(labelTextarea.value);
 
             const initialTimeTaken = ((performance.now() - startTime) / 1000).toFixed(2);
 
@@ -757,6 +809,7 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
             resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
             labelTextarea.addEventListener('input', (e) => {
+                updateIngredientsBackdrop(e.target.value);
                 const updatedLabelItems = e.target.value.split(',').map(s => s.trim()).filter(s => s.length > 0);
                 runValidation(updatedLabelItems);
             });
