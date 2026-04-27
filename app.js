@@ -1018,6 +1018,47 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
         ], y);
         y += 6;
 
+        // --- Product Label Image ---
+        if (labelBase64 && labelImagePreview && labelImagePreview.naturalWidth > 0) {
+            checkPage(20);
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.3);
+            doc.line(margin, y, pageW - margin, y);
+            y += 6;
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.setTextColor(30, 41, 59);
+            doc.text('Product Label Image', margin, y);
+            y += 6;
+
+            var imgW = contentW;
+            var imgH = (labelImagePreview.naturalHeight / labelImagePreview.naturalWidth) * imgW;
+            var maxImgH = pageH - margin * 2 - 20; 
+            
+            if (imgH > maxImgH) {
+                imgH = maxImgH;
+                imgW = (labelImagePreview.naturalWidth / labelImagePreview.naturalHeight) * imgH;
+            }
+            
+            checkPage(imgH + 10);
+
+            var imgFormat = 'JPEG';
+            if (labelBase64.startsWith('data:image/png')) imgFormat = 'PNG';
+            else if (labelBase64.startsWith('data:image/webp')) imgFormat = 'WEBP';
+
+            try {
+                doc.addImage(labelBase64, imgFormat, margin + (contentW - imgW) / 2, y, imgW, imgH);
+            } catch (e) {
+                console.warn('Could not add label image to PDF:', e);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                doc.text('(Image format not supported by PDF generator)', margin, y + 5);
+                imgH = 10;
+            }
+            y += imgH + 10;
+        }
+
         // --- Validation Results ---
         checkPage(16);
         doc.setDrawColor(226, 232, 240);
