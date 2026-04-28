@@ -49,10 +49,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateIngredientsBackdrop(text) {
         if (!labelBackdrop) return;
         const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        
+
         let html = '';
         const parts = text.split(',');
-        
+
         parts.forEach((part, i) => {
             const color = ingredientColors[i % ingredientColors.length];
             const leadingMatch = part.match(/^\s*/);
@@ -60,18 +60,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const leadingSpace = leadingMatch ? leadingMatch[0] : '';
             const trailingSpace = trailingMatch ? trailingMatch[0] : '';
             const core = part.substring(leadingSpace.length, part.length - trailingSpace.length);
-            
+
             html += escape(leadingSpace);
             if (core) {
                 html += `<span style="background-color: ${color}; border-radius: 4px; color: transparent;">${escape(core)}</span>`;
             }
             html += escape(trailingSpace);
-            
+
             if (i < parts.length - 1) {
                 html += ',';
             }
         });
-        
+
         if (text.endsWith('\n')) html += '&nbsp;';
         labelBackdrop.innerHTML = html;
     }
@@ -308,6 +308,9 @@ document.addEventListener('DOMContentLoaded', () => {
             apiUrl = 'https://api.anthropic.com/v1/messages';
             isAnthropicFormat = true;
             aiModel = 'claude-haiku-4-5-20251001';
+        } else if (/^[a-zA-Z0-9]{32}$/.test(apiKey)) {
+            apiUrl = 'https://api.mistral.ai/v1/chat/completions';
+            aiModel = 'mistral-small-latest';
         } else if (!apiKey.startsWith('sk-or-v1-')) {
             apiUrl = 'https://api.openai.com/v1/chat/completions';
             aiModel = 'gpt-4o-mini';
@@ -334,14 +337,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
                 } else {
                     headers['Authorization'] = `Bearer ${apiKey}`;
-                    headers['HTTP-Referer'] = window.location.href;
-                    headers['X-Title'] = 'Ingredient Extractor';
+                    if (apiUrl === 'https://openrouter.ai/api/v1/chat/completions') {
+                        headers['HTTP-Referer'] = window.location.href;
+                        headers['X-Title'] = 'Ingredient Extractor';
+                    }
                     payload = {
                         model: aiModel,
                         max_tokens: 4096,
                         messages: [{ role: "user", content: fullPrompt }]
                     };
-                    if (apiUrl === 'https://api.openai.com/v1/chat/completions') {
+                    if (apiUrl === 'https://api.openai.com/v1/chat/completions' || apiUrl === 'https://api.mistral.ai/v1/chat/completions') {
                         payload.response_format = { type: "json_object" };
                     }
                 }
@@ -380,6 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let aiModel = 'openrouter/free';
         let isGeminiFormat = false;
         let isAnthropicFormat = false;
+        let isMistralFormat = false;
 
         // Auto-detect key type
         if (apiKey.startsWith('AIza')) {
@@ -389,6 +395,10 @@ document.addEventListener('DOMContentLoaded', () => {
             apiUrl = 'https://api.anthropic.com/v1/messages';
             isAnthropicFormat = true;
             aiModel = 'claude-haiku-4-5-20251001';
+        } else if (/^[a-zA-Z0-9]{32}$/.test(apiKey)) {
+            apiUrl = 'https://api.mistral.ai/v1/ocr';
+            isMistralFormat = true;
+            aiModel = 'mistral-ocr-2512';
         } else if (!apiKey.startsWith('sk-or-v1-')) {
             apiUrl = 'https://api.openai.com/v1/chat/completions';
             aiModel = 'gpt-4o-mini'; // Extremely fast and supports vision + json formatting natively
@@ -396,6 +406,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
+                if (isMistralFormat) {
+                    const ocrResponse = await fetch('https://api.mistral.ai/v1/ocr', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${apiKey}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            model: "mistral-ocr-2512",
+                            document: {
+                                type: "document_url",
+                                document_url: imageBase64
+                            }
+                        })
+                    });
+
+                    const ocrData = await ocrResponse.json();
+                    if (!ocrResponse.ok) throw new Error(ocrData.message || 'Mistral OCR API Failed');
+
+                    const markdownText = ocrData.pages.map(p => p.markdown).join('\n');
+
+                    const fullPrompt = `${prompt}\n\n=== OCR EXTRACTED TEXT ===\n${markdownText}\n========================`;
+                    const chatResponse = await fetch('https://api.mistral.ai/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${apiKey}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            model: "mistral-small-latest",
+                            messages: [{ role: "user", content: fullPrompt }],
+                            response_format: { type: "json_object" }
+                        })
+                    });
+
+                    const chatData = await chatResponse.json();
+                    if (!chatResponse.ok) throw new Error(chatData.message || 'Mistral Chat API Failed');
+
+                    return chatData.choices?.[0]?.message?.content || '{}';
+                }
+
                 let payload;
                 let headers = {
                     'Content-Type': 'application/json'
@@ -916,13 +967,13 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
 
             var imgW = contentW;
             var imgH = (labelImagePreview.naturalHeight / labelImagePreview.naturalWidth) * imgW;
-            var maxImgH = pageH - margin * 2 - 20; 
-            
+            var maxImgH = pageH - margin * 2 - 20;
+
             if (imgH > maxImgH) {
                 imgH = maxImgH;
                 imgW = (labelImagePreview.naturalWidth / labelImagePreview.naturalHeight) * imgH;
             }
-            
+
             checkPage(imgH + 10);
 
             var imgFormat = 'JPEG';
@@ -939,7 +990,7 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
                 imgH = 10;
             }
             y += imgH + 10;
-            
+
             checkPage(16);
             doc.setDrawColor(226, 232, 240);
             doc.setLineWidth(0.3);
