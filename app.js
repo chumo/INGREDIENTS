@@ -829,9 +829,10 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
                         const originalHTML = newBtn.innerHTML;
                         newBtn.innerHTML = 'Generating...';
                         newBtn.disabled = true;
+                        const currentLabelText = labelTextarea ? labelTextarea.value : '';
                         // Small delay to let the button text update render
                         setTimeout(() => {
-                            generatePdfReport(templateNodes, isSuccess, missing, unnecessary, misordered, templateMeta)
+                            generatePdfReport(templateNodes, isSuccess, missing, unnecessary, misordered, templateMeta, currentLabelText)
                                 .finally(() => {
                                     newBtn.innerHTML = originalHTML;
                                     newBtn.disabled = false;
@@ -876,7 +877,7 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
         }
     });
 
-    function generatePdfReport(templateNodes, isSuccess, missing, unnecessary, misordered, meta) {
+    function generatePdfReport(templateNodes, isSuccess, missing, unnecessary, misordered, meta, labelIngredientsText) {
         // Use jsPDF directly — no html2canvas / DOM capture needed, fully reliable
         var jsPDFClass = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
         if (!jsPDFClass) { alert('PDF library not loaded. Please refresh the page.'); return Promise.resolve(); }
@@ -990,19 +991,48 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
                 imgH = 10;
             }
             y += imgH + 10;
-
-            checkPage(16);
-            doc.setDrawColor(226, 232, 240);
-            doc.setLineWidth(0.3);
-            doc.line(margin, y, pageW - margin, y);
-            y += 8;
         }
 
-        // --- Ingredients Section ---
+        // --- Ingredients Found in the Label (First Page) ---
+        checkPage(20);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
         doc.setTextColor(30, 41, 59);
-        doc.text('Ingredients in Template', margin, y);
+        doc.text('Ingredients Found in the Label', margin, y);
+        y += 6;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(51, 65, 85);
+        var labelLines = doc.splitTextToSize(labelIngredientsText || '—', contentW);
+        doc.text(labelLines, margin, y);
+        y += labelLines.length * 4.5 + 4;
+
+        // --- Ingredients in the Template (First Page) ---
+        checkPage(20);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(30, 41, 59);
+        doc.text('Ingredients in the Template', margin, y);
+        y += 6;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(51, 65, 85);
+        var templateString = templateNodes.map(t => t.name).join(', ');
+        var templateLines = doc.splitTextToSize(templateString || '—', contentW);
+        doc.text(templateLines, margin, y);
+        y += templateLines.length * 4.5 + 6;
+
+        // Force rest of report to next page
+        doc.addPage();
+        y = margin;
+
+        // --- Ingredients Section (Table) ---
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(30, 41, 59);
+        doc.text('Ingredients in Template (Detailed Table)', margin, y);
         y += 6;
 
         // Table header row
