@@ -832,7 +832,7 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
                         const currentLabelText = labelTextarea ? labelTextarea.value : '';
                         // Small delay to let the button text update render
                         setTimeout(() => {
-                            generatePdfReport(templateNodes, isSuccess, missing, unnecessary, misordered, templateMeta, currentLabelText)
+                            generatePdfReport(templateNodes, labelNodes, isSuccess, missing, unnecessary, misordered, templateMeta, currentLabelText)
                                 .finally(() => {
                                     newBtn.innerHTML = originalHTML;
                                     newBtn.disabled = false;
@@ -877,7 +877,7 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
         }
     });
 
-    function generatePdfReport(templateNodes, isSuccess, missing, unnecessary, misordered, meta, labelIngredientsText) {
+    function generatePdfReport(templateNodes, labelNodes, isSuccess, missing, unnecessary, misordered, meta, labelIngredientsText) {
         // Use jsPDF directly — no html2canvas / DOM capture needed, fully reliable
         var jsPDFClass = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
         if (!jsPDFClass) { alert('PDF library not loaded. Please refresh the page.'); return Promise.resolve(); }
@@ -1028,71 +1028,149 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
         doc.addPage();
         y = margin;
 
-        // --- Ingredients Section (Table) ---
+        // --- Ingredients Mapping Diagram ---
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
         doc.setTextColor(30, 41, 59);
-        doc.text('Ingredients in Template (Detailed Table)', margin, y);
+        doc.text('Ingredients Mapping Diagram', pageW / 2, y + 6, { align: 'center' });
+        y += 12;
+
+        var diagRowH = 5.2; // Compact row height
+        var diagBoxH = 4.2;
+        var colW = 65;
+        var tColX = margin + 12;
+        var lColX = pageW - margin - colW;
+        
+        // Headers for columns
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        doc.text('TEMPLATE', tColX + colW/2, y, { align: 'center' });
+        doc.text('LABEL', lColX + colW/2, y, { align: 'center' });
+        
+        doc.setFontSize(6.5);
+        doc.text('CONCENTRATION', tColX - 6, y - 1.5, { align: 'center' });
+        doc.text('RANGE', tColX - 6, y + 1.5, { align: 'center' });
+        
         y += 6;
 
-        // Table header row
-        doc.setFillColor(248, 250, 252);
-        doc.setDrawColor(226, 232, 240);
-        doc.rect(margin, y, contentW, rowH, 'FD');
-        // Vertical divider between columns
-        doc.line(margin + nameColW, y, margin + nameColW, y + rowH);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.setTextColor(30, 41, 59);
-        doc.text('Ingredient', margin + 2, y + rowH / 2 + 1.5);
-        doc.text('Concentration', margin + nameColW + concColW / 2, y + rowH / 2 + 1.5, { align: 'center' });
-        y += rowH;
+        var tPositions = {};
+        var lPositions = {};
 
-        // Table data rows
+        // Render Template Column
+        var currentY = y;
         var separatorAdded = false;
-        doc.setFont('helvetica', 'normal');
-        templateNodes.forEach(function(t) {
+        templateNodes.forEach(function(t, i) {
             if (!separatorAdded && t.pctNum !== null && t.pctNum < 1) {
-                checkPage(rowH);
-                doc.setFillColor(241, 245, 249);
-                doc.setDrawColor(226, 232, 240);
-                doc.rect(margin, y, contentW, rowH, 'FD');
+                // Draw 1% threshold
+                doc.setDrawColor(148, 163, 184);
+                doc.setLineWidth(0.2);
+                doc.line(tColX - 3, currentY, tColX + colW + 5, currentY);
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(9);
-                doc.setTextColor(100, 116, 139);
-                doc.text('< 1% CONCENTRATION THRESHOLD', pageW / 2, y + rowH / 2 + 1.5, { align: 'center' });
-                doc.setFont('helvetica', 'normal');
-                y += rowH;
+                doc.setFontSize(7);
+                doc.setTextColor(148, 163, 184);
+                doc.text('< 1%', tColX - 11, currentY + 1);
+                currentY += 2;
                 separatorAdded = true;
             }
 
-            checkPage(rowH);
-            var name = t.name;
-            // Wrap long names within the ingredient column width
-            var lines = doc.splitTextToSize(name, nameColW - 4);
-            var thisRowH = Math.max(rowH, lines.length * 5 + 2);
-            checkPage(thisRowH);
+            var itemY = currentY;
+            tPositions[t.id] = itemY + diagBoxH/2;
 
-            doc.setFillColor(255, 255, 255);
-            doc.setDrawColor(226, 232, 240);
-            doc.rect(margin, y, contentW, thisRowH, 'FD');
-            // Vertical divider
-            doc.line(margin + nameColW, y, margin + nameColW, y + thisRowH);
-
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(10);
-            doc.setTextColor(51, 65, 85);
-            doc.text(lines, margin + 2, y + 4.8);
-
-            // Concentration letter (centred in the column)
+            // Concentration Letter
             var concLabel = getConcentrationLabel(t.pctNum);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(10);
+            doc.setFontSize(8);
             doc.setTextColor(59, 130, 246);
-            doc.text(concLabel, margin + nameColW + concColW / 2, y + thisRowH / 2 + 1.5, { align: 'center' });
+            doc.text(concLabel, tColX - 6, itemY + diagBoxH/2 + 1, { align: 'center' });
 
-            y += thisRowH;
+            // Status Color
+            var statusColor = [148, 163, 184]; // default
+            if (t.status === 'matched') statusColor = [16, 185, 129];
+            else if (t.status === 'missing') statusColor = [245, 158, 11];
+            
+            doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+            doc.rect(tColX, itemY, 1.5, diagBoxH, 'F');
+
+            // Item Box
+            doc.setFillColor(248, 250, 252);
+            doc.setDrawColor(226, 232, 240);
+            doc.rect(tColX + 1.5, itemY, colW - 1.5, diagBoxH, 'FD');
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(51, 65, 85);
+            var displayName = t.name;
+            if (displayName.length > 35) displayName = displayName.substring(0, 32) + '...';
+            doc.text(displayName, tColX + 3, itemY + diagBoxH/2 + 0.8);
+
+            currentY += diagRowH;
         });
+
+        // Render Label Column
+        currentY = y;
+        labelNodes.forEach(function(l, i) {
+            var itemY = currentY;
+            lPositions[l.id] = itemY + diagBoxH/2;
+
+            // Status Color
+            var statusColor = [148, 163, 184];
+            if (l.status === 'matched') statusColor = [16, 185, 129];
+            else if (l.status === 'misordered') statusColor = [59, 130, 246];
+            else if (l.status === 'unnecessary') statusColor = [239, 68, 68];
+
+            doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+            doc.rect(lColX, itemY, 1.5, diagBoxH, 'F');
+
+            // Item Box
+            doc.setFillColor(248, 250, 252);
+            doc.setDrawColor(226, 232, 240);
+            doc.rect(lColX + 1.5, itemY, colW - 1.5, diagBoxH, 'FD');
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(51, 65, 85);
+            var displayName = l.name;
+            if (displayName.length > 35) displayName = displayName.substring(0, 32) + '...';
+            doc.text(displayName, lColX + 3, itemY + diagBoxH/2 + 0.8);
+
+            currentY += diagRowH;
+        });
+
+        // Draw Connections (Arrows)
+        templateNodes.forEach(function(t) {
+            if (t.status !== 'missing') {
+                labelNodes.forEach(function(l) {
+                    if (l.normName === t.normName) {
+                        var startX = tColX + colW;
+                        var startY = tPositions[t.id];
+                        var endX = lColX;
+                        var endY = lPositions[l.id];
+
+                        var color = (l.status === 'misordered') ? [59, 130, 246] : [16, 185, 129];
+                        doc.setDrawColor(color[0], color[1], color[2]);
+                        doc.setLineWidth(0.3);
+                        
+                        // Draw line
+                        doc.line(startX, startY, endX, endY);
+                        
+                        // Draw arrow head
+                        var headSize = 1.2;
+                        var angle = Math.atan2(endY - startY, endX - startX);
+                        doc.setFillColor(color[0], color[1], color[2]);
+                        doc.triangle(
+                            endX, endY,
+                            endX - headSize * Math.cos(angle - Math.PI/6), endY - headSize * Math.sin(angle - Math.PI/6),
+                            endX - headSize * Math.cos(angle + Math.PI/6), endY - headSize * Math.sin(angle + Math.PI/6),
+                            'F'
+                        );
+                    }
+                });
+            }
+        });
+
+        // Force rest of report to next page
+        doc.addPage();
+        y = margin;
 
         y += 3;
 
