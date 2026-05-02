@@ -625,9 +625,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const templatePrompt = `Extract the following from the template document and return strictly as a valid JSON object with no extra text:
-1. The metadata fields: "marca", "proyecto", "formula", "ensayo" (look for labels like Marca, Proyecto, Fórmula/Formula, Ensayo in the document header or info section; use empty string if not found).
+1. The metadata fields: "brand", "project", "formula", "test" (look for labels like Brand/Marca, Project/Proyecto, Formula/Fórmula, Test/Trial/Ensayo in the document header or info section; use empty string if not found).
 2. The list of ingredients and their percentages. Exclude any ingredients in sections labelled 'No etiquetables' (e.g. 'Alergenos No etiquetables'), but include those in sections like 'Alergenos etiquetables'.
-Return exactly this JSON format: {"marca": "string", "proyecto": "string", "formula": "string", "ensayo": "string", "ingredients": [{"name": "string", "percentage": number}]}`;
+Return exactly this JSON format: {"brand": "string", "project": "string", "formula": "string", "test": "string", "ingredients": [{"name": "string", "percentage": number}]}`;
             const labelPrompt = `Extract the list of ingredients from the product label in the exact order they appear. Return strictly as a valid JSON object with this format exactly: {"ingredients": ["string", "string"]}. Do not include any extra text.`;
 
             let templateResponseText = await fetchAiTextExtraction(apiKey, templatePdfText, templatePrompt);
@@ -654,10 +654,10 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
             if (!labelJson.ingredients || !Array.isArray(labelJson.ingredients)) throw new Error("Label JSON structure is missing the 'ingredients' array. The AI model failed to follow instructions.");
 
             const templateMeta = {
-                marca:    templateJson.marca    || '',
-                proyecto: templateJson.proyecto || '',
-                formula:  templateJson.formula  || '',
-                ensayo:   templateJson.ensayo   || ''
+                brand:   templateJson.brand   || '',
+                project: templateJson.project || '',
+                formula: templateJson.formula || '',
+                test:    templateJson.test    || ''
             };
 
             const templateItems = templateJson.ingredients.map(i => ({
@@ -932,10 +932,10 @@ Return exactly this JSON format: {"marca": "string", "proyecto": "string", "form
 
         // --- Metadata fields ---
         var metaFields = [
-            { label: 'Marca',    value: meta.marca },
-            { label: 'Proyecto', value: meta.proyecto },
-            { label: 'F\u00f3rmula', value: meta.formula },
-            { label: 'Ensayo',   value: meta.ensayo }
+            { label: 'Brand',    value: meta.brand },
+            { label: 'Project',  value: meta.project },
+            { label: 'Formula',  value: meta.formula },
+            { label: 'Test',     value: meta.test }
         ];
         var metaColW = contentW / 2;
         metaFields.forEach(function(field, i) {
