@@ -55,8 +55,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ai_processing: "La IA está procesando los documentos...",
             pdf_meta: "{pageCount} página{plural} · {size} KB · {charCount} caracteres extraídos",
             template_prompt: `Extrae lo siguiente del documento de plantilla y devuélvelo estrictamente como un objeto JSON válido sin texto adicional:
-1. Los campos de metadatos: "brand" (marca), "project" (proyecto), "formula" (fórmula), "test" (ensayo) (busca etiquetas como Brand/Marca, Project/Proyecto, Formula/Fórmula, Test/Trial/Ensayo en el encabezado del documento o sección de información; usa una cadena vacía si no se encuentra).
-2. La lista de ingredientes y sus porcentajes. Excluye cualquier ingrediente en secciones etiquetadas como 'No etiquetables' (por ejemplo, 'Alergenos No etiquetables'), pero incluye aquellos en secciones como 'Alergenos etiquetables'.
+1. Los campos de metadatos: "brand" (marca), "project" (proyecto), "formula" (fórmula), "test" (ensayo). Busca etiquetas como Brand/Marca, Project/Proyecto, Formula/Fórmula, Test/Trial/Ensayo. EXTRAE LOS VALORES LITERALMENTE como aparecen en el documento, NUNCA LOS TRADUZCAS ni los modifiques. Si el documento dice "Marca: (BC_8) ...", el valor debe ser "(BC_8) ...".
+2. La lista de ingredientes y sus porcentajes. Excluye cualquier ingrediente en secciones etiquetadas como 'No etiquetables', pero incluye aquellos en secciones como 'Alergenos etiquetables'.
 Devuelve exactamente este formato JSON: {"brand": "string", "project": "string", "formula": "string", "test": "string", "ingredients": [{"name": "string", "percentage": number}]}`,
             label_prompt: `Extrae la lista de ingredientes de la etiqueta del producto en el orden exacto en que aparecen. Devuélvelo estrictamente como un objeto JSON válido con este formato exacto: {"ingredients": ["string", "string"]}. No incluyas ningún texto adicional.`
         },
@@ -115,8 +115,8 @@ Devuelve exactamente este formato JSON: {"brand": "string", "project": "string",
             ai_processing: "AI is processing documents...",
             pdf_meta: "{pageCount} page{plural} · {size} KB · {charCount} characters extracted",
             template_prompt: `Extract the following from the template document and return strictly as a valid JSON object with no extra text:
-1. The metadata fields: "brand", "project", "formula", "test" (look for labels like Brand/Marca, Project/Proyecto, Formula/Fórmula, Test/Trial/Ensayo in the document header or info section; use empty string if not found).
-2. The list of ingredients and their percentages. Exclude any ingredients in sections labelled 'No etiquetables' (e.g. 'Alergenos No etiquetables'), but include those in sections like 'Alergenos etiquetables'.
+1. The metadata fields: "brand", "project", "formula", "test". Look for labels like Brand/Marca, Project/Proyecto, Formula/Fórmula, Test/Trial/Ensayo. EXTRACT THE VALUES LITERALLY as they appear in the document, NEVER TRANSLATE or modify them. If the document says "Marca: (BC_8) ...", the value must be "(BC_8) ...".
+2. The list of ingredients and their percentages. Exclude any ingredients in sections labelled 'No etiquetables', but include those in sections like 'Alergenos etiquetables'.
 Return exactly this JSON format: {"brand": "string", "project": "string", "formula": "string", "test": "string", "ingredients": [{"name": "string", "percentage": number}]}`,
             label_prompt: `Extract the list of ingredients from the product label in the exact order they appear. Return strictly as a valid JSON object with this format exactly: {"ingredients": ["string", "string"]}. Do not include any extra text.`
         }
