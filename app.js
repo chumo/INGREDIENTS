@@ -1,7 +1,135 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const apiKeyInput = document.getElementById('api-key');
+    const translations = {
+        es: {
+            app_title: "Validador de Ingredientes",
+            app_subtitle: "Sube una plantilla y una etiqueta para validar la lista de ingredientes en la etiqueta.",
+            api_key_label: "Clave API (OpenRouter, OpenAI, Gemini, Anthropic o Mistral)",
+            api_key_placeholder: "Empieza por sk-or-v1-, sk-, AIza..., sk-ant-... o clave Mistral de 32 caracteres",
+            template_header: "PLANTILLA",
+            template_drop: "Arrastra y suelta la Plantilla",
+            pdf_only: "Solo documentos PDF",
+            browse_files: "Buscar Archivos",
+            label_header: "ETIQUETA",
+            label_drop: "Arrastra y suelta la Etiqueta",
+            image_support: "Soporta PDF, PNG, JPG, JPEG",
+            extract_validate: "Extraer y Validar",
+            processing: "La IA está procesando los documentos...",
+            extracted_ingredients: "Ingredientes Extraídos de la Etiqueta",
+            edit_instructions: "Edita la lista separada por comas si la IA omitió o alucinó ingredientes. El informe se actualizará automáticamente.",
+            validation_report: "Informe de Validación",
+            download_pdf: "Descargar PDF",
+            ingredient_mapping: "Mapeo de Ingredientes",
+            validation_passed: "✅ ¡Validación Superada!",
+            validation_failed: "❌ Validación Fallida",
+            validation_took: "La validación tardó {time} segundos",
+            missing_ingredients: "Ingredientes Faltantes",
+            unnecessary_ingredients: "Ingredientes Innecesarios",
+            misordered_ingredients: "Ingredientes Desordenados",
+            match_properly: "Todos los ingredientes coinciden correctamente con la plantilla.",
+            system_error: "❌ Error del Sistema: {error}",
+            verify_ai_data: "Por favor, verifica que la IA haya devuelto datos correctos e inténtalo de nuevo.",
+            template_col_header: "Plantilla",
+            label_col_header: "Etiqueta",
+            generating: "Generando...",
+            pdf_report_title: "Informe de Validación de Ingredientes",
+            pdf_generated_on: "Generado el",
+            pdf_brand: "Marca",
+            pdf_project: "Proyecto",
+            pdf_formula: "Fórmula",
+            pdf_test: "Ensayo",
+            pdf_label_img: "Imagen de la Etiqueta del Producto",
+            pdf_ingredients_found: "Ingredientes Encontrados en la Etiqueta",
+            pdf_ingredients_template: "Ingredientes en la Plantilla",
+            pdf_mapping_diagram: "Diagrama de Mapeo de Ingredientes",
+            pdf_concentration: "CONCENTRACIÓN",
+            pdf_range: "RANGO",
+            pdf_validation_results: "Resultados de la Validación",
+            pdf_success_msg: "Validación Superada — Todos los ingredientes coinciden correctamente con la plantilla.",
+            pdf_fail_msg: "Validación Fallida",
+            clear: "Borrar",
+            processing_template: "Procesando plantilla...",
+            processing_label: "Procesando etiqueta...",
+            error_pdf_only: "La plantilla debe ser un documento PDF.",
+            error_unsupported_label: "Tipo de archivo de etiqueta no soportado.",
+            error_pdf_lib: "La biblioteca PDF no se ha cargado. Por favor, refresca la página.",
+            ai_processing: "La IA está procesando los documentos...",
+            pdf_meta: "{pageCount} página{plural} · {size} KB · {charCount} caracteres extraídos",
+            template_prompt: `Extrae lo siguiente del documento de plantilla y devuélvelo estrictamente como un objeto JSON válido sin texto adicional:
+1. Los campos de metadatos: "brand" (marca), "project" (proyecto), "formula" (fórmula), "test" (ensayo) (busca etiquetas como Brand/Marca, Project/Proyecto, Formula/Fórmula, Test/Trial/Ensayo en el encabezado del documento o sección de información; usa una cadena vacía si no se encuentra).
+2. La lista de ingredientes y sus porcentajes. Excluye cualquier ingrediente en secciones etiquetadas como 'No etiquetables' (por ejemplo, 'Alergenos No etiquetables'), pero incluye aquellos en secciones como 'Alergenos etiquetables'.
+Devuelve exactamente este formato JSON: {"brand": "string", "project": "string", "formula": "string", "test": "string", "ingredients": [{"name": "string", "percentage": number}]}`,
+            label_prompt: `Extrae la lista de ingredientes de la etiqueta del producto en el orden exacto en que aparecen. Devuélvelo estrictamente como un objeto JSON válido con este formato exacto: {"ingredients": ["string", "string"]}. No incluyas ningún texto adicional.`
+        },
+        en: {
+            app_title: "Ingredients Validator",
+            app_subtitle: "Upload a template and a label to validate the list of ingredients in the label.",
+            api_key_label: "API Key (OpenRouter, OpenAI, Gemini, Anthropic, or Mistral)",
+            api_key_placeholder: "Starts with sk-or-v1-, sk-, AIza..., sk-ant-..., or 32-char Mistral key",
+            template_header: "TEMPLATE",
+            template_drop: "Drag & Drop Template",
+            pdf_only: "PDF documents only",
+            browse_files: "Browse Files",
+            label_header: "LABEL",
+            label_drop: "Drag & Drop Label",
+            image_support: "Supports PDF, PNG, JPG, JPEG",
+            extract_validate: "Extract & Validate",
+            processing: "AI is processing documents...",
+            extracted_ingredients: "Extracted Label Ingredients",
+            edit_instructions: "Edit the comma-separated list below if the AI missed or hallucinated ingredients. The report will update automatically.",
+            validation_report: "Validation Report",
+            download_pdf: "Download PDF",
+            ingredient_mapping: "Ingredient Mapping",
+            validation_passed: "✅ Validation Passed!",
+            validation_failed: "❌ Validation Failed",
+            validation_took: "Validation took {time} seconds",
+            missing_ingredients: "Missing Ingredients",
+            unnecessary_ingredients: "Unnecessary Ingredients",
+            misordered_ingredients: "Misordered Ingredients",
+            match_properly: "All ingredients match the template properly.",
+            system_error: "❌ System Error: {error}",
+            verify_ai_data: "Please verify the AI returned proper data and try again.",
+            template_col_header: "Template",
+            label_col_header: "Label",
+            generating: "Generating...",
+            pdf_report_title: "Ingredient Validation Report",
+            pdf_generated_on: "Generated on",
+            pdf_brand: "Brand",
+            pdf_project: "Project",
+            pdf_formula: "Formula",
+            pdf_test: "Test",
+            pdf_label_img: "Product Label Image",
+            pdf_ingredients_found: "Ingredients Found in the Label",
+            pdf_ingredients_template: "Ingredients in the Template",
+            pdf_mapping_diagram: "Ingredients Mapping Diagram",
+            pdf_concentration: "CONCENTRATION",
+            pdf_range: "RANGE",
+            pdf_validation_results: "Validation Results",
+            pdf_success_msg: "Validation Passed — All ingredients match the template properly.",
+            pdf_fail_msg: "Validation Failed",
+            clear: "Clear",
+            processing_template: "Processing template...",
+            processing_label: "Processing label...",
+            error_pdf_only: "The template must be a PDF document.",
+            error_unsupported_label: "Unsupported label file type.",
+            error_pdf_lib: "PDF library not loaded. Please refresh the page.",
+            ai_processing: "AI is processing documents...",
+            pdf_meta: "{pageCount} page{plural} · {size} KB · {charCount} characters extracted",
+            template_prompt: `Extract the following from the template document and return strictly as a valid JSON object with no extra text:
+1. The metadata fields: "brand", "project", "formula", "test" (look for labels like Brand/Marca, Project/Proyecto, Formula/Fórmula, Test/Trial/Ensayo in the document header or info section; use empty string if not found).
+2. The list of ingredients and their percentages. Exclude any ingredients in sections labelled 'No etiquetables' (e.g. 'Alergenos No etiquetables'), but include those in sections like 'Alergenos etiquetables'.
+Return exactly this JSON format: {"brand": "string", "project": "string", "formula": "string", "test": "string", "ingredients": [{"name": "string", "percentage": number}]}`,
+            label_prompt: `Extract the list of ingredients from the product label in the exact order they appear. Return strictly as a valid JSON object with this format exactly: {"ingredients": ["string", "string"]}. Do not include any extra text.`
+        }
+    };
 
-    // Template elements
+    let currentLanguage = localStorage.getItem('preferredLanguage') || 'es';
+    let templatePdfText = null;
+    let labelBase64 = null;
+    let templateItems = [];
+    let templateMeta = {};
+    let initialTimeTaken = 0;
+
+    const apiKeyInput = document.getElementById('api-key');
     const templateDropZone = document.getElementById('template-drop-zone');
     const templateFileInput = document.getElementById('template-file-input');
     const templateUploadContent = document.getElementById('template-upload-content');
@@ -10,8 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const templatePdfMeta = document.getElementById('template-pdf-meta');
     const templateFileInfo = document.getElementById('template-file-info');
     const clearTemplateBtn = document.getElementById('clear-template-file');
-
-    // Label elements
     const labelDropZone = document.getElementById('label-drop-zone');
     const labelFileInput = document.getElementById('label-file-input');
     const labelUploadContent = document.getElementById('label-upload-content');
@@ -19,21 +145,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const labelImagePreview = document.getElementById('label-image-preview');
     const labelFileInfo = document.getElementById('label-file-info');
     const clearLabelBtn = document.getElementById('clear-label-file');
-
     const extractBtn = document.getElementById('extract-btn');
     const loadingContainer = document.getElementById('loading-container');
     const loadingText = loadingContainer.querySelector('.loading-text');
-
     const resultSection = document.getElementById('result-section');
     const validationStatus = document.getElementById('validation-status');
     const validationResults = document.getElementById('validation-results');
     const resultContent = document.getElementById('result-content');
-
-    let templatePdfText = null;  // raw text extracted from the template PDF
-    let labelBase64 = null;
-
     const labelTextarea = document.getElementById('label-ingredients-edit');
     const labelBackdrop = document.getElementById('label-ingredients-backdrop');
+
+    window.setLanguage = function(lang) {
+        currentLanguage = lang;
+        localStorage.setItem('preferredLanguage', lang);
+        
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (translations[lang][key]) {
+                if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                    el.placeholder = translations[lang][key];
+                } else {
+                    el.textContent = translations[lang][key];
+                }
+            }
+        });
+
+        apiKeyInput.placeholder = translations[lang].api_key_placeholder;
+        document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`lang-${lang}`).classList.add('active');
+
+        // Re-run validation if results are visible
+        if (!resultSection.classList.contains('hidden')) {
+            const currentLabelText = labelTextarea ? labelTextarea.value : '';
+            const updatedLabelItems = currentLabelText.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            if (updatedLabelItems.length > 0 && typeof window.runValidation === 'function') {
+                window.runValidation(updatedLabelItems);
+            }
+        }
+    };
+
+    // Initialize language
+    setLanguage(currentLanguage);
+
 
     const ingredientColors = [
         'rgba(255, 179, 186, 0.4)',
@@ -81,6 +234,12 @@ document.addEventListener('DOMContentLoaded', () => {
             labelBackdrop.scrollTop = labelTextarea.scrollTop;
             labelBackdrop.scrollLeft = labelTextarea.scrollLeft;
         });
+        
+        labelTextarea.addEventListener('input', (e) => {
+            updateIngredientsBackdrop(e.target.value);
+            const updatedLabelItems = e.target.value.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            runValidation(updatedLabelItems);
+        });
     }
 
     // table of concentration ranges
@@ -96,6 +255,191 @@ document.addEventListener('DOMContentLoaded', () => {
         { "concentrationRange": "I", "percentageMin": 0.05, "percentageMax": 0.1 },
         { "concentrationRange": "J", "percentageMin": 0.0, "percentageMax": 0.05 }
     ]
+
+
+    window.runValidation = (currentLabelItems) => {
+        const normTemplateMap = new Map();
+        templateItems.forEach(i => normTemplateMap.set(normalizeIngredient(i.name), i));
+
+        const normLabelItems = currentLabelItems.map(name => normalizeIngredient(name));
+        const labelOriginalNames = new Map();
+        currentLabelItems.forEach(name => labelOriginalNames.set(normalizeIngredient(name), name));
+
+        const missing = [];
+        for (const item of templateItems) {
+            if (!normLabelItems.includes(normalizeIngredient(item.name))) {
+                missing.push(item.name);
+            }
+        }
+
+        const unnecessary = [];
+        for (const originalName of currentLabelItems) {
+            if (!normTemplateMap.has(normalizeIngredient(originalName))) {
+                unnecessary.push(originalName);
+            }
+        }
+
+        // Calculation for misordered
+        const strictTemplateItems = templateItems.filter(i => {
+            const pct = i.percentage != null ? parseFloat(i.percentage) : 100;
+            return pct >= 1;
+        });
+        const strictTemplateNormNames = strictTemplateItems.map(i => normalizeIngredient(i.name));
+
+        const strictLabelNormNames = normLabelItems.filter(name => strictTemplateNormNames.includes(name));
+
+        let expectedIndex = 0;
+        const misordered = [];
+        for (const name of strictLabelNormNames) {
+            const foundIndex = strictTemplateNormNames.indexOf(name);
+            if (foundIndex < expectedIndex) {
+                misordered.push(labelOriginalNames.get(name));
+            } else {
+                expectedIndex = foundIndex;
+            }
+        }
+
+        // Build the Mapping View
+        const templateNodes = templateItems.map((item, index) => {
+            const normName = normalizeIngredient(item.name);
+            let status = 'matched';
+            if (!normLabelItems.includes(normName)) {
+                status = 'missing';
+            }
+            const pctNum = item.percentage != null ? parseFloat(item.percentage) : null;
+            return { id: `tpl-${index}`, name: item.name, normName, status, percentage: item.percentage, pctNum };
+        });
+
+        const labelNodes = currentLabelItems.map((name, index) => {
+            const normName = normalizeIngredient(name);
+            let status = 'matched';
+            if (!normTemplateMap.has(normName)) {
+                status = 'unnecessary';
+            } else if (misordered.includes(name)) {
+                status = 'misordered';
+            }
+            return { id: `lbl-${index}`, name, normName, status };
+        });
+
+        const connections = [];
+        templateNodes.forEach(t => {
+            if (t.status !== 'missing') {
+                labelNodes.forEach(l => {
+                    if (l.normName === t.normName) {
+                        connections.push({ from: t.id, to: l.id, status: l.status });
+                    }
+                });
+            }
+        });
+
+        let templateColHtml = '';
+        let separatorAdded = false;
+        templateNodes.forEach(t => {
+            if (!separatorAdded && t.pctNum !== null && t.pctNum < 1) {
+                templateColHtml += `<div class="less-than-one-separator"><span>&lt; 1%</span></div>`;
+                separatorAdded = true;
+            }
+            const pctText = t.percentage != null ? t.percentage + (String(t.percentage).includes('%') ? '' : '%') : '';
+            templateColHtml += `
+            <div class="template-item-wrapper">
+                <div class="percentage-badge">${pctText}</div>
+                <div class="ing-item ${t.status}" id="${t.id}">${t.name}</div>
+            </div>
+            `;
+        });
+
+        let mappingHtml = `
+        <div class="comparison-wrapper">
+            <div class="comparison-container" id="comparison-container">
+                <svg class="comparison-svg" id="comparison-svg"></svg>
+                <div class="comparison-column" id="template-col">
+                    <h4>${translations[currentLanguage].template_col_header}</h4>
+                    ${templateColHtml}
+                </div>
+                <div class="comparison-column" id="label-col">
+                    <h4>${translations[currentLanguage].label_col_header}</h4>
+                    ${labelNodes.map(l => `<div class="ing-item ${l.status}" id="${l.id}">${l.name}</div>`).join('')}
+                </div>
+            </div>
+        </div>
+        `;
+
+        resultContent.innerHTML = mappingHtml;
+
+        // Render Validation Result
+        let isSuccess = missing.length === 0 && unnecessary.length === 0 && misordered.length === 0;
+
+        validationStatus.className = 'validation-status ' + (isSuccess ? 'success' : 'error');
+        const statusText = isSuccess ? translations[currentLanguage].validation_passed : translations[currentLanguage].validation_failed;
+        const tookText = translations[currentLanguage].validation_took.replace('{time}', initialTimeTaken);
+        validationStatus.innerHTML = statusText + `<div style="font-size: 0.85em; font-weight: normal; margin-top: 5px; opacity: 0.8;">${tookText}</div>`;
+
+        if (!isSuccess) {
+            let html = '';
+                if (missing.length > 0) {
+                    html += `
+                        <div class="validation-category missing">
+                            <h4>⚠️ ${translations[currentLanguage].missing_ingredients} (${missing.length})</h4>
+                            <ul>${missing.map(m => `<li>${m}</li>`).join('')}</ul>
+                        </div>
+                    `;
+                }
+                if (unnecessary.length > 0) {
+                    html += `
+                        <div class="validation-category unnecessary">
+                            <h4>⚠️ ${translations[currentLanguage].unnecessary_ingredients} (${unnecessary.length})</h4>
+                            <ul>${unnecessary.map(m => `<li>${m}</li>`).join('')}</ul>
+                        </div>
+                    `;
+                }
+                if (misordered.length > 0) {
+                    html += `
+                        <div class="validation-category misordered">
+                            <h4>⚠️ ${translations[currentLanguage].misordered_ingredients} (${misordered.length})</h4>
+                            <ul>${misordered.map(m => `<li>${m}</li>`).join('')}</ul>
+                        </div>
+                    `;
+                }
+            validationResults.innerHTML = html;
+        } else {
+            validationResults.innerHTML = `<p style="color: var(--text-muted); padding: 1rem; text-align: center;">${translations[currentLanguage].match_properly}</p>`;
+        }
+
+        const downloadBtn = document.getElementById('download-pdf-btn');
+        if (downloadBtn) {
+            downloadBtn.style.display = 'flex';
+            // Remove previous event listeners by cloning
+            const newBtn = downloadBtn.cloneNode(true);
+            downloadBtn.parentNode.replaceChild(newBtn, downloadBtn);
+            newBtn.addEventListener('click', () => {
+                const originalHTML = newBtn.innerHTML;
+                newBtn.innerHTML = translations[currentLanguage].generating;
+                newBtn.disabled = true;
+                const currentLabelText = labelTextarea ? labelTextarea.value : '';
+                // Small delay to let the button text update render
+                setTimeout(() => {
+                    generatePdfReport(templateNodes, labelNodes, isSuccess, missing, unnecessary, misordered, templateMeta, currentLabelText)
+                        .finally(() => {
+                            newBtn.innerHTML = originalHTML;
+                            newBtn.disabled = false;
+                        });
+                }, 50);
+            });
+        }
+
+        // Draw lines after DOM is updated
+        setTimeout(() => {
+            drawMappingLines(connections);
+            if (window._mappingResizeObserver) {
+                window._mappingResizeObserver.disconnect();
+            }
+            const container = document.getElementById('comparison-container');
+            if (container) {
+                window._mappingResizeObserver = new ResizeObserver(() => drawMappingLines(connections));
+                window._mappingResizeObserver.observe(container);
+            }
+        }, 100);
+    };
 
     // Load saved API key if exists
     const savedKey = localStorage.getItem('openRouterApiKey');
@@ -130,14 +474,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupDropZone(templateDropZone, templateFileInput, async (file) => {
         try {
-            setProcessingUI(true, "Processing template...");
+            setProcessingUI(true, translations[currentLanguage].processing_template);
             if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-                throw new Error("The template must be a PDF document.");
+                throw new Error(translations[currentLanguage].error_pdf_only);
             }
             const { text, pageCount } = await parsePdfText(file);
             templatePdfText = text;
             templatePdfName.textContent = file.name;
-            templatePdfMeta.textContent = `${pageCount} page${pageCount !== 1 ? 's' : ''} · ${(file.size / 1024).toFixed(0)} KB · ${text.length.toLocaleString()} characters extracted`;
+            const plural = currentLanguage === 'es' ? (pageCount !== 1 ? 's' : '') : (pageCount !== 1 ? 's' : '');
+            templatePdfMeta.textContent = translations[currentLanguage].pdf_meta
+                .replace('{pageCount}', pageCount)
+                .replace('{plural}', plural)
+                .replace('{size}', (file.size / 1024).toFixed(0))
+                .replace('{charCount}', text.length.toLocaleString());
             templateFileInfo.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
             templateUploadContent.classList.add('hidden');
             templatePreviewContainer.classList.remove('hidden');
@@ -152,13 +501,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupDropZone(labelDropZone, labelFileInput, async (file) => {
         try {
-            setProcessingUI(true, "Processing label...");
+            setProcessingUI(true, translations[currentLanguage].processing_label);
             labelFileInfo.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
             if (file.type === 'application/pdf') {
                 labelBase64 = await renderPdfToImage(file);
             } else if (file.type.startsWith('image/')) {
                 labelBase64 = await readImageToBase64(file);
-            } else throw new Error("Unsupported label file type.");
+            } else throw new Error(translations[currentLanguage].error_unsupported_label);
             labelImagePreview.src = labelBase64;
             labelUploadContent.classList.add('hidden');
             labelPreviewContainer.classList.remove('hidden');
@@ -616,7 +965,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const startTime = performance.now();
 
-        setProcessingUI(true, "AI is processing documents...");
+        setProcessingUI(true, translations[currentLanguage].ai_processing);
         resultSection.classList.add('hidden');
         document.getElementById('download-pdf-btn').style.display = 'none';
         validationStatus.innerHTML = '';
@@ -624,11 +973,8 @@ document.addEventListener('DOMContentLoaded', () => {
         resultContent.textContent = '';
 
         try {
-            const templatePrompt = `Extract the following from the template document and return strictly as a valid JSON object with no extra text:
-1. The metadata fields: "brand", "project", "formula", "test" (look for labels like Brand/Marca, Project/Proyecto, Formula/Fórmula, Test/Trial/Ensayo in the document header or info section; use empty string if not found).
-2. The list of ingredients and their percentages. Exclude any ingredients in sections labelled 'No etiquetables' (e.g. 'Alergenos No etiquetables'), but include those in sections like 'Alergenos etiquetables'.
-Return exactly this JSON format: {"brand": "string", "project": "string", "formula": "string", "test": "string", "ingredients": [{"name": "string", "percentage": number}]}`;
-            const labelPrompt = `Extract the list of ingredients from the product label in the exact order they appear. Return strictly as a valid JSON object with this format exactly: {"ingredients": ["string", "string"]}. Do not include any extra text.`;
+            const templatePrompt = translations[currentLanguage].template_prompt;
+            const labelPrompt = translations[currentLanguage].label_prompt;
 
             let templateResponseText = await fetchAiTextExtraction(apiKey, templatePdfText, templatePrompt);
             let labelResponseText = await fetchAiExtraction(apiKey, labelBase64, labelPrompt);
@@ -653,223 +999,34 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
             if (!templateJson.ingredients || !Array.isArray(templateJson.ingredients)) throw new Error("Template JSON structure is missing the 'ingredients' array. The AI model failed to follow instructions.");
             if (!labelJson.ingredients || !Array.isArray(labelJson.ingredients)) throw new Error("Label JSON structure is missing the 'ingredients' array. The AI model failed to follow instructions.");
 
-            const templateMeta = {
+            templateMeta = {
                 brand:   templateJson.brand   || '',
                 project: templateJson.project || '',
                 formula: templateJson.formula || '',
                 test:    templateJson.test    || ''
             };
 
-            const templateItems = templateJson.ingredients.map(i => ({
+            templateItems = templateJson.ingredients.map(i => ({
                 ...i,
                 name: i.name.replace(/\*/g, '').trim()
             }));
 
             const labelItems = labelJson.ingredients.map(name => name.replace(/\*/g, '').trim());
 
-            const labelTextarea = document.getElementById('label-ingredients-edit');
             labelTextarea.value = labelItems.join(', ');
             updateIngredientsBackdrop(labelTextarea.value);
 
-            const initialTimeTaken = ((performance.now() - startTime) / 1000).toFixed(2);
-
-            const runValidation = (currentLabelItems) => {
-                const normTemplateMap = new Map();
-                templateItems.forEach(i => normTemplateMap.set(normalizeIngredient(i.name), i));
-
-                const normLabelItems = currentLabelItems.map(name => normalizeIngredient(name));
-                const labelOriginalNames = new Map();
-                currentLabelItems.forEach(name => labelOriginalNames.set(normalizeIngredient(name), name));
-
-                const missing = [];
-                for (const item of templateItems) {
-                    if (!normLabelItems.includes(normalizeIngredient(item.name))) {
-                        missing.push(item.name);
-                    }
-                }
-
-                const unnecessary = [];
-                for (const originalName of currentLabelItems) {
-                    if (!normTemplateMap.has(normalizeIngredient(originalName))) {
-                        unnecessary.push(originalName);
-                    }
-                }
-
-                // Calculation for misordered
-                const strictTemplateItems = templateItems.filter(i => {
-                    const pct = i.percentage != null ? parseFloat(i.percentage) : 100;
-                    return pct >= 1;
-                });
-                const strictTemplateNormNames = strictTemplateItems.map(i => normalizeIngredient(i.name));
-
-                const strictLabelNormNames = normLabelItems.filter(name => strictTemplateNormNames.includes(name));
-
-                let expectedIndex = 0;
-                const misordered = [];
-                for (const name of strictLabelNormNames) {
-                    const foundIndex = strictTemplateNormNames.indexOf(name);
-                    if (foundIndex < expectedIndex) {
-                        misordered.push(labelOriginalNames.get(name));
-                    } else {
-                        expectedIndex = foundIndex;
-                    }
-                }
-
-                // Build the Mapping View
-                const templateNodes = templateItems.map((item, index) => {
-                    const normName = normalizeIngredient(item.name);
-                    let status = 'matched';
-                    if (!normLabelItems.includes(normName)) {
-                        status = 'missing';
-                    }
-                    const pctNum = item.percentage != null ? parseFloat(item.percentage) : null;
-                    return { id: `tpl-${index}`, name: item.name, normName, status, percentage: item.percentage, pctNum };
-                });
-
-                const labelNodes = currentLabelItems.map((name, index) => {
-                    const normName = normalizeIngredient(name);
-                    let status = 'matched';
-                    if (!normTemplateMap.has(normName)) {
-                        status = 'unnecessary';
-                    } else if (misordered.includes(name)) {
-                        status = 'misordered';
-                    }
-                    return { id: `lbl-${index}`, name, normName, status };
-                });
-
-                const connections = [];
-                templateNodes.forEach(t => {
-                    if (t.status !== 'missing') {
-                        labelNodes.forEach(l => {
-                            if (l.normName === t.normName) {
-                                connections.push({ from: t.id, to: l.id, status: l.status });
-                            }
-                        });
-                    }
-                });
-
-                let templateColHtml = '';
-                let separatorAdded = false;
-                templateNodes.forEach(t => {
-                    if (!separatorAdded && t.pctNum !== null && t.pctNum < 1) {
-                        templateColHtml += `<div class="less-than-one-separator"><span>&lt; 1%</span></div>`;
-                        separatorAdded = true;
-                    }
-                    const pctText = t.percentage != null ? t.percentage + (String(t.percentage).includes('%') ? '' : '%') : '';
-                    templateColHtml += `
-                    <div class="template-item-wrapper">
-                        <div class="percentage-badge">${pctText}</div>
-                        <div class="ing-item ${t.status}" id="${t.id}">${t.name}</div>
-                    </div>
-                    `;
-                });
-
-                let mappingHtml = `
-                <div class="comparison-wrapper">
-                    <div class="comparison-container" id="comparison-container">
-                        <svg class="comparison-svg" id="comparison-svg"></svg>
-                        <div class="comparison-column" id="template-col">
-                            <h4>Template</h4>
-                            ${templateColHtml}
-                        </div>
-                        <div class="comparison-column" id="label-col">
-                            <h4>Label</h4>
-                            ${labelNodes.map(l => `<div class="ing-item ${l.status}" id="${l.id}">${l.name}</div>`).join('')}
-                        </div>
-                    </div>
-                </div>
-                `;
-
-                resultContent.innerHTML = mappingHtml;
-
-                // Render Validation Result
-                let isSuccess = missing.length === 0 && unnecessary.length === 0 && misordered.length === 0;
-
-                validationStatus.className = 'validation-status ' + (isSuccess ? 'success' : 'error');
-                validationStatus.innerHTML = (isSuccess ? '✅ Validation Passed!' : '❌ Validation Failed') + `<div style="font-size: 0.85em; font-weight: normal; margin-top: 5px; opacity: 0.8;">Validation took ${initialTimeTaken} seconds</div>`;
-
-                if (!isSuccess) {
-                    let html = '';
-                    if (missing.length > 0) {
-                        html += `
-                            <div class="validation-category missing">
-                                <h4>⚠️ Missing Ingredients (${missing.length})</h4>
-                                <ul>${missing.map(m => `<li>${m}</li>`).join('')}</ul>
-                            </div>
-                        `;
-                    }
-                    if (unnecessary.length > 0) {
-                        html += `
-                            <div class="validation-category unnecessary">
-                                <h4>⚠️ Unnecessary Ingredients (${unnecessary.length})</h4>
-                                <ul>${unnecessary.map(m => `<li>${m}</li>`).join('')}</ul>
-                            </div>
-                        `;
-                    }
-                    if (misordered.length > 0) {
-                        html += `
-                            <div class="validation-category misordered">
-                                <h4>⚠️ Misordered Ingredients (${misordered.length})</h4>
-                                <ul>${misordered.map(m => `<li>${m}</li>`).join('')}</ul>
-                            </div>
-                        `;
-                    }
-                    validationResults.innerHTML = html;
-                } else {
-                    validationResults.innerHTML = '<p style="color: var(--text-muted); padding: 1rem; text-align: center;">All ingredients match the template properly.</p>';
-                }
-
-                const downloadBtn = document.getElementById('download-pdf-btn');
-                if (downloadBtn) {
-                    downloadBtn.style.display = 'flex';
-                    // Remove previous event listeners by cloning
-                    const newBtn = downloadBtn.cloneNode(true);
-                    downloadBtn.parentNode.replaceChild(newBtn, downloadBtn);
-                    newBtn.addEventListener('click', () => {
-                        const originalHTML = newBtn.innerHTML;
-                        newBtn.innerHTML = 'Generating...';
-                        newBtn.disabled = true;
-                        const currentLabelText = labelTextarea ? labelTextarea.value : '';
-                        // Small delay to let the button text update render
-                        setTimeout(() => {
-                            generatePdfReport(templateNodes, labelNodes, isSuccess, missing, unnecessary, misordered, templateMeta, currentLabelText)
-                                .finally(() => {
-                                    newBtn.innerHTML = originalHTML;
-                                    newBtn.disabled = false;
-                                });
-                        }, 50);
-                    });
-                }
-
-                // Draw lines after DOM is updated
-                setTimeout(() => {
-                    drawMappingLines(connections);
-                    if (window._mappingResizeObserver) {
-                        window._mappingResizeObserver.disconnect();
-                    }
-                    const container = document.getElementById('comparison-container');
-                    if (container) {
-                        window._mappingResizeObserver = new ResizeObserver(() => drawMappingLines(connections));
-                        window._mappingResizeObserver.observe(container);
-                    }
-                }, 100);
-            };
+            initialTimeTaken = ((performance.now() - startTime) / 1000).toFixed(2);
 
             runValidation(labelItems);
 
             resultSection.classList.remove('hidden');
             resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-            labelTextarea.addEventListener('input', (e) => {
-                updateIngredientsBackdrop(e.target.value);
-                const updatedLabelItems = e.target.value.split(',').map(s => s.trim()).filter(s => s.length > 0);
-                runValidation(updatedLabelItems);
-            });
-
         } catch (error) {
             validationStatus.className = 'validation-status error';
-            validationStatus.textContent = `❌ System Error: ${error.message}`;
-            validationResults.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 1rem;">Please verify the AI returned proper data and try again.</p>';
+            validationStatus.textContent = translations[currentLanguage].system_error.replace('{error}', error.message);
+            validationResults.innerHTML = `<p style="color: var(--text-muted); text-align: center; padding: 1rem;">${translations[currentLanguage].verify_ai_data}</p>`;
             resultSection.classList.remove('hidden');
             console.error(error);
         } finally {
@@ -880,7 +1037,7 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
     function generatePdfReport(templateNodes, labelNodes, isSuccess, missing, unnecessary, misordered, meta, labelIngredientsText) {
         // Use jsPDF directly — no html2canvas / DOM capture needed, fully reliable
         var jsPDFClass = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
-        if (!jsPDFClass) { alert('PDF library not loaded. Please refresh the page.'); return Promise.resolve(); }
+        if (!jsPDFClass) { alert(translations[currentLanguage].error_pdf_lib); return Promise.resolve(); }
 
         var doc = new jsPDFClass({ unit: 'mm', format: 'a4', orientation: 'portrait' });
         var pageW = doc.internal.pageSize.getWidth();
@@ -916,13 +1073,14 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(18);
         doc.setTextColor(59, 130, 246);
-        doc.text('Ingredient Validation Report', pageW / 2, y + 7, { align: 'center' });
+        doc.text(translations[currentLanguage].pdf_report_title, pageW / 2, y + 7, { align: 'center' });
         y += 12;
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
         doc.setTextColor(100, 116, 139);
-        doc.text('Generated on ' + new Date().toLocaleString(), pageW / 2, y, { align: 'center' });
+        const dateStr = translations[currentLanguage].pdf_generated_on + ' ' + new Date().toLocaleString(currentLanguage === 'es' ? 'es-ES' : 'en-US');
+        doc.text(dateStr, pageW / 2, y, { align: 'center' });
         y += 7;
 
         doc.setDrawColor(226, 232, 240);
@@ -932,10 +1090,10 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
 
         // --- Metadata fields ---
         var metaFields = [
-            { label: 'Brand',    value: meta.brand },
-            { label: 'Project',  value: meta.project },
-            { label: 'Formula',  value: meta.formula },
-            { label: 'Test',     value: meta.test }
+            { label: translations[currentLanguage].pdf_brand,    value: meta.brand },
+            { label: translations[currentLanguage].pdf_project,  value: meta.project },
+            { label: translations[currentLanguage].pdf_formula,  value: meta.formula },
+            { label: translations[currentLanguage].pdf_test,     value: meta.test }
         ];
         var metaColW = contentW / 2;
         metaFields.forEach(function(field, i) {
@@ -963,7 +1121,7 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(12);
             doc.setTextColor(30, 41, 59);
-            doc.text('Product Label Image', margin, y);
+            doc.text(translations[currentLanguage].pdf_label_img, margin, y);
             y += 6;
 
             var imgW = contentW;
@@ -998,7 +1156,7 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
         doc.setTextColor(30, 41, 59);
-        doc.text('Ingredients Found in the Label', margin, y);
+        doc.text(translations[currentLanguage].pdf_ingredients_found, margin, y);
         y += 6;
 
         doc.setFont('helvetica', 'normal');
@@ -1013,7 +1171,7 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
         doc.setTextColor(30, 41, 59);
-        doc.text('Ingredients in the Template', margin, y);
+        doc.text(translations[currentLanguage].pdf_ingredients_template, margin, y);
         y += 6;
 
         doc.setFont('helvetica', 'normal');
@@ -1032,7 +1190,7 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
         doc.setTextColor(30, 41, 59);
-        doc.text('Ingredients Mapping Diagram', pageW / 2, y + 6, { align: 'center' });
+        doc.text(translations[currentLanguage].pdf_mapping_diagram, pageW / 2, y + 6, { align: 'center' });
         y += 12;
 
         var diagRowH = 5.2; // Compact row height
@@ -1044,12 +1202,12 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
         // Headers for columns
         doc.setFontSize(9);
         doc.setTextColor(100, 116, 139);
-        doc.text('TEMPLATE', tColX + colW/2, y, { align: 'center' });
-        doc.text('LABEL', lColX + colW/2, y, { align: 'center' });
+        doc.text(translations[currentLanguage].template_col_header.toUpperCase(), tColX + colW/2, y, { align: 'center' });
+        doc.text(translations[currentLanguage].label_col_header.toUpperCase(), lColX + colW/2, y, { align: 'center' });
         
         doc.setFontSize(6.5);
-        doc.text('CONCENTRATION', tColX - 6, y - 1.5, { align: 'center' });
-        doc.text('RANGE', tColX - 6, y + 1.5, { align: 'center' });
+        doc.text(translations[currentLanguage].pdf_concentration, tColX - 6, y - 1.5, { align: 'center' });
+        doc.text(translations[currentLanguage].pdf_range, tColX - 6, y + 1.5, { align: 'center' });
         
         y += 6;
 
@@ -1174,8 +1332,6 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
 
         y += 3;
 
-
-
         // --- Validation Results ---
         checkPage(16);
         doc.setDrawColor(226, 232, 240);
@@ -1186,7 +1342,7 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
         doc.setTextColor(30, 41, 59);
-        doc.text('Validation Results', margin, y);
+        doc.text(translations[currentLanguage].pdf_validation_results, margin, y);
         y += 7;
 
         if (isSuccess) {
@@ -1197,7 +1353,7 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(10);
             doc.setTextColor(22, 101, 52);
-            doc.text('Validation Passed — All ingredients match the template properly.', margin + 3, y + 6.5);
+            doc.text(translations[currentLanguage].pdf_success_msg, margin + 3, y + 6.5);
             y += 14;
         } else {
             checkPage(12);
@@ -1207,7 +1363,7 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(10);
             doc.setTextColor(153, 27, 27);
-            doc.text('Validation Failed', margin + 3, y + 6.5);
+            doc.text(translations[currentLanguage].pdf_fail_msg, margin + 3, y + 6.5);
             y += 14;
 
             function renderList(title, items, r, g, b) {
@@ -1231,9 +1387,9 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
                 y += 4;
             }
 
-            renderList('Missing Ingredients', missing, 234, 88, 12);
-            renderList('Unnecessary Ingredients', unnecessary, 244, 63, 94);
-            renderList('Misordered Ingredients', misordered, 59, 130, 246);
+            renderList(translations[currentLanguage].missing_ingredients, missing, 234, 88, 12);
+            renderList(translations[currentLanguage].unnecessary_ingredients, unnecessary, 244, 63, 94);
+            renderList(translations[currentLanguage].misordered_ingredients, misordered, 59, 130, 246);
         }
 
         doc.save('validation-report.pdf');

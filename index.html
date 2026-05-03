@@ -27,29 +27,34 @@
     </div>
 
     <main class="container">
+        <div class="language-selector">
+            <button class="lang-btn active" id="lang-es" onclick="setLanguage('es')">ES</button>
+            <button class="lang-btn" id="lang-en" onclick="setLanguage('en')">EN</button>
+        </div>
+
         <header>
-            <h1>Ingredients Validator</h1>
-            <p>Upload a template and a label to validate the list of ingredients in the label.</p>
+            <h1 data-i18n="app_title">Validador de Ingredientes</h1>
+            <p data-i18n="app_subtitle">Sube una plantilla y una etiqueta para validar la lista de ingredientes en la etiqueta.</p>
         </header>
 
         <section class="card settings-section">
             <div class="input-group">
-                <label for="api-key">API Key (OpenRouter, OpenAI, Gemini, Anthropic, or Mistral)</label>
-                <input type="password" id="api-key" placeholder="Starts with sk-or-v1-, sk-, AIza..., sk-ant-..., or 32-char Mistral key" autocomplete="off">
+                <label for="api-key" data-i18n="api_key_label">Clave API (OpenRouter, OpenAI, Gemini, Anthropic o Mistral)</label>
+                <input type="password" id="api-key" placeholder="Empieza por sk-or-v1-, sk-, AIza..., sk-ant-... o clave Mistral de 32 caracteres" autocomplete="off">
             </div>
         </section>
 
         <div class="split-layout">
             <section class="card upload-section" id="template-drop-zone">
-                <h2>TEMPLATE</h2>
+                <h2 data-i18n="template_header">PLANTILLA</h2>
                 <div class="upload-content" id="template-upload-content">
                     <svg viewBox="0 0 24 24" fill="none" class="upload-icon" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
-                    <h3>Drag & Drop Template</h3>
-                    <p>PDF documents only</p>
+                    <h3 data-i18n="template_drop">Arrastra y suelta la Plantilla</h3>
+                    <p data-i18n="pdf_only">Solo documentos PDF</p>
                     <input type="file" id="template-file-input" accept=".pdf,application/pdf" hidden>
-                    <button class="btn btn-primary" onclick="document.getElementById('template-file-input').click()">Browse Files</button>
+                    <button class="btn btn-primary" onclick="document.getElementById('template-file-input').click()" data-i18n="browse_files">Buscar Archivos</button>
                 </div>
                 <div id="template-preview-container" class="hidden">
                     <div class="pdf-doc-preview" id="template-pdf-preview">
@@ -60,32 +65,32 @@
                         </div>
                     </div>
                     <div class="file-info" id="template-file-info"></div>
-                    <button class="btn btn-secondary" id="clear-template-file">Clear</button>
+                    <button class="btn btn-secondary" id="clear-template-file" data-i18n="clear">Borrar</button>
                 </div>
             </section>
 
             <section class="card upload-section" id="label-drop-zone">
-                <h2>LABEL</h2>
+                <h2 data-i18n="label_header">ETIQUETA</h2>
                 <div class="upload-content" id="label-upload-content">
                     <svg viewBox="0 0 24 24" fill="none" class="upload-icon" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
-                    <h3>Drag & Drop Label</h3>
-                    <p>Supports PDF, PNG, JPG, JPEG</p>
+                    <h3 data-i18n="label_drop">Arrastra y suelta la Etiqueta</h3>
+                    <p data-i18n="image_support">Soporta PDF, PNG, JPG, JPEG</p>
                     <input type="file" id="label-file-input" accept=".pdf,image/png,image/jpeg,image/jpg" hidden>
-                    <button class="btn btn-primary" onclick="document.getElementById('label-file-input').click()">Browse Files</button>
+                    <button class="btn btn-primary" onclick="document.getElementById('label-file-input').click()" data-i18n="browse_files">Buscar Archivos</button>
                 </div>
                 <div id="label-preview-container" class="hidden">
                     <img id="label-image-preview" src="" alt="Label Preview">
                     <div class="file-info" id="label-file-info"></div>
-                    <button class="btn btn-secondary" id="clear-label-file">Clear</button>
+                    <button class="btn btn-secondary" id="clear-label-file" data-i18n="clear">Borrar</button>
                 </div>
             </section>
         </div>
 
         <section class="action-section">
             <button class="btn btn-extract" id="extract-btn" disabled>
-                <span class="btn-text">Extract & Validate</span>
+                <span class="btn-text" data-i18n="extract_validate">Extraer y Validar</span>
             </button>
             <div id="loading-container" class="hidden">
                 <div class="loading-text">AI is processing documents...</div>
@@ -97,27 +102,27 @@
 
         <section class="card result-section hidden" id="result-section">
             <div class="edit-label-ingredients" style="margin-bottom: 2rem;">
-                <h3 style="margin-top: 0;">Extracted Label Ingredients</h3>
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">Edit the comma-separated list below if the AI missed or hallucinated ingredients. The report will update automatically.</p>
+                <h3 style="margin-top: 0;" data-i18n="extracted_ingredients">Ingredientes Extraídos de la Etiqueta</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;" data-i18n="edit_instructions">Edita la lista separada por comas si la IA omitió o alucinó ingredientes. El informe se actualizará automáticamente.</p>
                 <div class="textarea-wrapper">
                     <div id="label-ingredients-backdrop"></div>
                     <textarea id="label-ingredients-edit" rows="4" spellcheck="false"></textarea>
                 </div>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h2 style="margin: 0;">Validation Report</h2>
+                <h2 style="margin: 0;" data-i18n="validation_report">Informe de Validación</h2>
                 <button class="btn btn-secondary" id="download-pdf-btn" style="display: none; padding: 0.5rem 1rem; font-size: 0.9rem;">
                     <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem; vertical-align: text-bottom;">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="7 10 12 15 17 10"></polyline>
                         <line x1="12" y1="15" x2="12" y2="3"></line>
                     </svg>
-                    Download PDF
+                    <span data-i18n="download_pdf">Descargar PDF</span>
                 </button>
             </div>
             <div id="validation-status" class="validation-status"></div>
             <div class="validation-results" id="validation-results"></div>
-            <h3>Ingredient Mapping</h3>
+            <h3 data-i18n="ingredient_mapping">Mapeo de Ingredientes</h3>
             <div class="result-content" id="result-content"></div>
         </section>
     </main>
