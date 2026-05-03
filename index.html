@@ -127,6 +127,26 @@
         </section>
     </main>
 
+    <!-- ROI Selector Modal -->
+    <div id="roi-modal" class="modal-overlay hidden">
+        <div class="modal-content roi-modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="roi_title">Seleccionar Área de Ingredientes</h2>
+                <p data-i18n="roi_instructions">Dibuja un recuadro sobre la zona donde aparecen los ingredientes para mejorar la precisión de la IA.</p>
+            </div>
+            <div class="roi-container">
+                <div id="roi-canvas-wrapper">
+                    <canvas id="roi-canvas"></canvas>
+                    <div id="roi-selection-box"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="roi-full-image-btn" data-i18n="roi_use_full">Usar Imagen Completa</button>
+                <button class="btn btn-primary" id="roi-accept-btn" data-i18n="roi_accept">Aceptar Selección</button>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>

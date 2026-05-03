@@ -58,7 +58,11 @@ document.addEventListener('DOMContentLoaded', () => {
 1. Los campos de metadatos: "brand" (marca), "project" (proyecto), "formula" (fórmula), "test" (ensayo). Busca etiquetas como Brand/Marca, Project/Proyecto, Formula/Fórmula, Test/Trial/Ensayo. EXTRAE LOS VALORES LITERALMENTE como aparecen en el documento, NUNCA LOS TRADUZCAS ni los modifiques. Si el documento dice "Marca: (BC_8) ...", el valor debe ser "(BC_8) ...".
 2. La lista de ingredientes y sus porcentajes. Excluye cualquier ingrediente en secciones etiquetadas como 'No etiquetables', pero incluye aquellos en secciones como 'Alergenos etiquetables'.
 Devuelve exactamente este formato JSON: {"brand": "string", "project": "string", "formula": "string", "test": "string", "ingredients": [{"name": "string", "percentage": number}]}`,
-            label_prompt: `Extrae la lista de ingredientes de la etiqueta del producto en el orden exacto en que aparecen. Devuélvelo estrictamente como un objeto JSON válido con este formato exacto: {"ingredients": ["string", "string"]}. No incluyas ningún texto adicional.`
+            label_prompt: `Extrae la lista de ingredientes de la etiqueta del producto en el orden exacto en que aparecen. Devuélvelo estrictamente como un objeto JSON válido con este formato exacto: {"ingredients": ["string", "string"]}. No incluyas ningún texto adicional.`,
+            roi_title: "Seleccionar Área de Ingredientes",
+            roi_instructions: "Dibuja un recuadro sobre la zona donde aparecen los ingredientes para mejorar la precisión de la IA.",
+            roi_use_full: "Usar Imagen Completa",
+            roi_accept: "Aceptar Selección"
         },
         en: {
             app_title: "Ingredients Validator",
@@ -118,13 +122,18 @@ Devuelve exactamente este formato JSON: {"brand": "string", "project": "string",
 1. The metadata fields: "brand", "project", "formula", "test". Look for labels like Brand/Marca, Project/Proyecto, Formula/Fórmula, Test/Trial/Ensayo. EXTRACT THE VALUES LITERALLY as they appear in the document, NEVER TRANSLATE or modify them. If the document says "Marca: (BC_8) ...", the value must be "(BC_8) ...".
 2. The list of ingredients and their percentages. Exclude any ingredients in sections labelled 'No etiquetables', but include those in sections like 'Alergenos etiquetables'.
 Return exactly this JSON format: {"brand": "string", "project": "string", "formula": "string", "test": "string", "ingredients": [{"name": "string", "percentage": number}]}`,
-            label_prompt: `Extract the list of ingredients from the product label in the exact order they appear. Return strictly as a valid JSON object with this format exactly: {"ingredients": ["string", "string"]}. Do not include any extra text.`
+            label_prompt: `Extract the list of ingredients from the product label in the exact order they appear. Return strictly as a valid JSON object with this format exactly: {"ingredients": ["string", "string"]}. Do not include any extra text.`,
+            roi_title: "Select Ingredient Area",
+            roi_instructions: "Draw a box over the area where the ingredients appear to improve AI accuracy.",
+            roi_use_full: "Use Full Image",
+            roi_accept: "Accept Selection"
         }
     };
 
     let currentLanguage = localStorage.getItem('preferredLanguage') || 'es';
     let templatePdfText = null;
-    let labelBase64 = null;
+    let labelBase64 = null; // This will store the CROPPED image for the AI
+    let originalLabelBase64 = null; // This will store the FULL image for the report
     let templateItems = [];
     let templateMeta = {};
     let initialTimeTaken = 0;
@@ -453,6 +462,124 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
         validateState();
     });
 
+    // ROI Selector State & Elements
+    const roiModal = document.getElementById('roi-modal');
+    const roiCanvas = document.getElementById('roi-canvas');
+    const roiCtx = roiCanvas.getContext('2d');
+    const roiSelectionBox = document.getElementById('roi-selection-box');
+    const roiAcceptBtn = document.getElementById('roi-accept-btn');
+    const roiFullImageBtn = document.getElementById('roi-full-image-btn');
+    const roiCanvasWrapper = document.getElementById('roi-canvas-wrapper');
+
+    let roiStartX, roiStartY, isDrawing = false;
+    let roiSelectedArea = null;
+    let roiScale = 1;
+    let roiOriginalImg = new Image();
+
+    function openROIModal(imageBase64) {
+        roiOriginalImg.src = imageBase64;
+        roiOriginalImg.onload = () => {
+            // Calculate scale to fit in viewport but keep it large
+            const maxWidth = window.innerWidth * 0.8;
+            const maxHeight = window.innerHeight * 0.6;
+            let width = roiOriginalImg.width;
+            let height = roiOriginalImg.height;
+
+            if (width > maxWidth) {
+                height *= maxWidth / width;
+                width = maxWidth;
+            }
+            if (height > maxHeight) {
+                width *= maxHeight / height;
+                height = maxHeight;
+            }
+
+            roiCanvas.width = width;
+            roiCanvas.height = height;
+            roiScale = roiOriginalImg.width / width;
+
+            roiCtx.drawImage(roiOriginalImg, 0, 0, width, height);
+            
+            // Reset selection
+            roiSelectedArea = null;
+            roiSelectionBox.style.display = 'none';
+            roiModal.classList.remove('hidden');
+        };
+    }
+
+    roiCanvasWrapper.addEventListener('mousedown', (e) => {
+        const rect = roiCanvas.getBoundingClientRect();
+        roiStartX = e.clientX - rect.left;
+        roiStartY = e.clientY - rect.top;
+        isDrawing = true;
+        
+        roiSelectionBox.style.display = 'block';
+        roiSelectionBox.style.left = `${roiStartX}px`;
+        roiSelectionBox.style.top = `${roiStartY}px`;
+        roiSelectionBox.style.width = '0px';
+        roiSelectionBox.style.height = '0px';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDrawing) return;
+        
+        const rect = roiCanvas.getBoundingClientRect();
+        let currentX = Math.max(0, Math.min(e.clientX - rect.left, roiCanvas.width));
+        let currentY = Math.max(0, Math.min(e.clientY - rect.top, roiCanvas.height));
+        
+        const left = Math.min(roiStartX, currentX);
+        const top = Math.min(roiStartY, currentY);
+        const width = Math.abs(roiStartX - currentX);
+        const height = Math.abs(roiStartY - currentY);
+        
+        roiSelectionBox.style.left = `${left}px`;
+        roiSelectionBox.style.top = `${top}px`;
+        roiSelectionBox.style.width = `${width}px`;
+        roiSelectionBox.style.height = `${height}px`;
+        
+        roiSelectedArea = { left, top, width, height };
+    });
+
+    window.addEventListener('mouseup', () => {
+        isDrawing = false;
+    });
+
+    roiAcceptBtn.addEventListener('click', () => {
+        if (!roiSelectedArea || roiSelectedArea.width < 10 || roiSelectedArea.height < 10) {
+            // If no area selected, just use full image
+            labelBase64 = originalLabelBase64;
+        } else {
+            // Crop the image
+            const cropCanvas = document.createElement('canvas');
+            const cropCtx = cropCanvas.getContext('2d');
+            
+            cropCanvas.width = roiSelectedArea.width * roiScale;
+            cropCanvas.height = roiSelectedArea.height * roiScale;
+            
+            cropCtx.drawImage(
+                roiOriginalImg,
+                roiSelectedArea.left * roiScale,
+                roiSelectedArea.top * roiScale,
+                roiSelectedArea.width * roiScale,
+                roiSelectedArea.height * roiScale,
+                0, 0,
+                cropCanvas.width,
+                cropCanvas.height
+            );
+            
+            labelBase64 = cropCanvas.toDataURL('image/jpeg', 0.9);
+        }
+        
+        roiModal.classList.add('hidden');
+        validateState();
+    });
+
+    roiFullImageBtn.addEventListener('click', () => {
+        labelBase64 = originalLabelBase64;
+        roiModal.classList.add('hidden');
+        validateState();
+    });
+
     // Helper functions for drag and drop setup
     function setupDropZone(dropZone, fileInput, handler) {
         dropZone.addEventListener('dragover', (e) => {
@@ -503,14 +630,21 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
         try {
             setProcessingUI(true, translations[currentLanguage].processing_label);
             labelFileInfo.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            let base64;
             if (file.type === 'application/pdf') {
-                labelBase64 = await renderPdfToImage(file);
+                base64 = await renderPdfToImage(file);
             } else if (file.type.startsWith('image/')) {
-                labelBase64 = await readImageToBase64(file);
+                base64 = await readImageToBase64(file);
             } else throw new Error(translations[currentLanguage].error_unsupported_label);
-            labelImagePreview.src = labelBase64;
+            
+            originalLabelBase64 = base64;
+            labelImagePreview.src = base64;
             labelUploadContent.classList.add('hidden');
             labelPreviewContainer.classList.remove('hidden');
+            
+            // Open ROI modal for the user to select ingredients area
+            openROIModal(base64);
+            
             validateState();
         } catch (e) {
             alert(e.message);
@@ -534,6 +668,7 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
 
     clearLabelBtn.addEventListener('click', () => {
         labelBase64 = null;
+        originalLabelBase64 = null;
         labelFileInput.value = '';
         labelUploadContent.classList.remove('hidden');
         labelPreviewContainer.classList.add('hidden');
@@ -1117,11 +1252,11 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
         y += 8;
 
         // --- Product Label Image ---
-        if (labelBase64 && labelImagePreview && labelImagePreview.naturalWidth > 0) {
+        if (originalLabelBase64 && labelImagePreview && labelImagePreview.naturalWidth > 0) {
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(12);
             doc.setTextColor(30, 41, 59);
-            doc.text(translations[currentLanguage].pdf_label_img, margin, y);
+            doc.text(translations[currentLanguage].roi_instructions ? translations[currentLanguage].pdf_label_img : "Product Label Image", margin, y);
             y += 6;
 
             var imgW = contentW;
@@ -1136,11 +1271,11 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
             checkPage(imgH + 10);
 
             var imgFormat = 'JPEG';
-            if (labelBase64.startsWith('data:image/png')) imgFormat = 'PNG';
-            else if (labelBase64.startsWith('data:image/webp')) imgFormat = 'WEBP';
+            if (originalLabelBase64.startsWith('data:image/png')) imgFormat = 'PNG';
+            else if (originalLabelBase64.startsWith('data:image/webp')) imgFormat = 'WEBP';
 
             try {
-                doc.addImage(labelBase64, imgFormat, margin + (contentW - imgW) / 2, y, imgW, imgH);
+                doc.addImage(originalLabelBase64, imgFormat, margin + (contentW - imgW) / 2, y, imgW, imgH);
             } catch (e) {
                 console.warn('Could not add label image to PDF:', e);
                 doc.setFont('helvetica', 'normal');
