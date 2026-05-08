@@ -72,7 +72,7 @@ Devuelve exactamente este formato JSON: {"brand": "string", "project": "string",
             uploaded_files: "Archivos Subidos",
             allergen_prompt: `Extrae la siguiente información del texto proporcionado y devuélvela estrictamente como un objeto JSON válido:
 - product_code: típicamente un número de 7 dígitos cerca del nombre del producto.
-- printing_date: típicamente se encuentra como nota al pie o en otro lugar del documento. Convierte al formato YYYY.mm.dd.
+- printing_date: típicamente se encuentra como nota al pie o en otro lugar del documento. Convierte al formato YYYY-mm-dd.
 - allergens: lista de nombres INCI con su porcentaje de concentración correspondiente. Usa ÚNICAMENTE los nombres INCI de esta lista: {inci_list}. Algunos no tendrán porcentaje, en ese caso asume 0.
 Formato JSON esperado: {"product_code": "string", "printing_date": "string", "allergens": [{"inci": "string", "percentage": number}]}`
         },
@@ -148,7 +148,7 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
             uploaded_files: "Uploaded Files",
             allergen_prompt: `Extract the following information from the provided text and return it strictly as a valid JSON object:
 - product_code: typically a 7-digit number near the product name.
-- printing_date: typically found as a footnote or elsewhere in the document. Convert to YYYY.mm.dd format.
+- printing_date: typically found as a footnote or elsewhere in the document. Convert to YYYY-mm-dd format.
 - allergens: list of INCI names with their corresponding concentration percentage. Use ONLY the INCI names provided in this list: {inci_list}. Some won't have a percentage, in such case assume 0.
 Expected JSON format: {"product_code": "string", "printing_date": "string", "allergens": [{"inci": "string", "percentage": number}]}`
         }
@@ -757,7 +757,8 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             console.log("Allergen Extraction Result:", result);
 
             const productCode = result.product_code || 'Unknown';
-            const printingDate = result.printing_date || 'Unknown';
+            const rawDate = result.printing_date || 'Unknown';
+            const printingDate = rawDate.replace(/\./g, '-');
             const colKey = `${productCode}_${printingDate}`;
             
             // Add column header
