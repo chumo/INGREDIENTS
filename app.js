@@ -67,7 +67,14 @@ Devuelve exactamente este formato JSON: {"brand": "string", "project": "string",
             roi_title: "Seleccionar Área de Ingredientes",
             roi_instructions: "Dibuja un recuadro sobre la zona donde aparecen los ingredientes para mejorar la precisión de la IA.",
             roi_use_full: "Usar Imagen Completa",
-            roi_accept: "Aceptar Selección"
+            roi_accept: "Aceptar Selección",
+            allergen_uploader_title: "Alérgenos",
+            uploaded_files: "Archivos Subidos",
+            allergen_prompt: `Extrae la siguiente información del texto proporcionado y devuélvela estrictamente como un objeto JSON válido:
+- product_code: típicamente un número de 7 dígitos cerca del nombre del producto.
+- printing_date: típicamente se encuentra como nota al pie o en otro lugar del documento. Convierte al formato YYYY.mm.dd.
+- allergens: lista de nombres INCI con su porcentaje de concentración correspondiente. Usa ÚNICAMENTE los nombres INCI de esta lista: {inci_list}. Algunos no tendrán porcentaje, en ese caso asume 0.
+Formato JSON esperado: {"product_code": "string", "printing_date": "string", "allergens": [{"inci": "string", "percentage": number}]}`
         },
         en: {
             header_app_name: "LABEL REGULATORY",
@@ -136,7 +143,14 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
             roi_title: "Select Ingredient Area",
             roi_instructions: "Draw a box over the area where the ingredients appear to improve AI accuracy.",
             roi_use_full: "Use Full Image",
-            roi_accept: "Accept Selection"
+            roi_accept: "Accept Selection",
+            allergen_uploader_title: "Allergens",
+            uploaded_files: "Uploaded Files",
+            allergen_prompt: `Extract the following information from the provided text and return it strictly as a valid JSON object:
+- product_code: typically a 7-digit number near the product name.
+- printing_date: typically found as a footnote or elsewhere in the document. Convert to YYYY.mm.dd format.
+- allergens: list of INCI names with their corresponding concentration percentage. Use ONLY the INCI names provided in this list: {inci_list}. Some won't have a percentage, in such case assume 0.
+Expected JSON format: {"product_code": "string", "printing_date": "string", "allergens": [{"inci": "string", "percentage": number}]}`
         }
     };
 
@@ -146,6 +160,15 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
         
         document.getElementById(`tab-${tabId}`).classList.remove('hidden');
         document.getElementById(`tab-btn-${tabId}`).classList.add('active');
+
+        const container = document.getElementById('main-container');
+        if (container) {
+            if (tabId === 'allergen') {
+                container.classList.add('wide-container');
+            } else {
+                container.classList.remove('wide-container');
+            }
+        }
 
         // Scroll to top when switching tabs
         window.scrollTo(0, 0);
@@ -184,6 +207,17 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
     const resultContent = document.getElementById('result-content');
     const labelTextarea = document.getElementById('label-ingredients-edit');
     const labelBackdrop = document.getElementById('label-ingredients-backdrop');
+
+    // Allergen Extractor Elements
+    const allergenDropZone = document.getElementById('allergen-drop-zone');
+    const allergenFileInput = document.getElementById('allergen-file-input');
+    const allergenFileList = document.getElementById('allergen-file-list');
+    const allergenTableBody = document.getElementById('allergen-table-body');
+    const allergenTableHeader = document.getElementById('allergen-table-header');
+    
+    let uploadedAllergenFiles = [];
+    let allergenDataMap = new Map(); // Map of INCI -> { columnKey -> percentage }
+
 
     window.setLanguage = function(lang) {
         currentLanguage = lang;
@@ -675,6 +709,105 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
         }
     });
 
+    // --- Allergen Extractor Logic ---
+    function initAllergenTable() {
+        if (typeof allergens === 'undefined') return;
+        allergenTableBody.innerHTML = '';
+        allergens.forEach(item => {
+            const row = document.createElement('tr');
+            const td = document.createElement('td');
+            td.className = 'sticky-col';
+            td.textContent = item.INCI;
+            row.appendChild(td);
+            allergenTableBody.appendChild(row);
+        });
+    }
+
+    initAllergenTable();
+
+    setupDropZone(allergenDropZone, allergenFileInput, async (file) => {
+        try {
+            if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                throw new Error(translations[currentLanguage].error_pdf_only);
+            }
+            await processAllergenPdf(file);
+        } catch (e) {
+            alert(e.message);
+        }
+    });
+
+    async function processAllergenPdf(file) {
+        const apiKey = apiKeyInput.value.trim();
+        if (!apiKey) {
+            alert(translations[currentLanguage].api_key_label || "Please enter an API Key first.");
+            return;
+        }
+
+        const li = document.createElement('li');
+        li.textContent = `⏳ ${file.name}...`;
+        allergenFileList.appendChild(li);
+
+        try {
+            const { text } = await parsePdfText(file);
+            const inciList = (typeof allergens !== 'undefined') ? allergens.map(a => a.INCI).join(', ') : '';
+            const prompt = translations[currentLanguage].allergen_prompt.replace('{inci_list}', inciList);
+            const resultText = await fetchAiTextExtraction(apiKey, text, prompt);
+            const result = extractJsonSafely(resultText);
+            
+            console.log("Allergen Extraction Result:", result);
+
+            const productCode = result.product_code || 'Unknown';
+            const printingDate = result.printing_date || 'Unknown';
+            const colKey = `${productCode}_${printingDate}`;
+            
+            // Add column header
+            const th = document.createElement('th');
+            th.textContent = colKey;
+            allergenTableHeader.appendChild(th);
+            
+            // Map extracted allergens
+            const extractedMap = new Map();
+            if (result.allergens && Array.isArray(result.allergens)) {
+                result.allergens.forEach(a => {
+                    // Try both 'inci' and 'name' properties
+                    const name = a.inci || a.name || "";
+                    const normInci = normalizeIngredient(name);
+                    if (normInci) {
+                        extractedMap.set(normInci, a.percentage !== undefined ? a.percentage : 0);
+                    }
+                });
+            }
+
+            console.log("Extracted Map size:", extractedMap.size);
+
+            // Update table rows
+            const rows = allergenTableBody.querySelectorAll('tr');
+            console.log(`Updating ${rows.length} rows. Allergens in map:`, Array.from(extractedMap.keys()));
+            
+            rows.forEach((row, index) => {
+                const item = allergens[index];
+                if (!item) return;
+
+                const normInci = normalizeIngredient(item.INCI);
+                const percentage = extractedMap.has(normInci) ? extractedMap.get(normInci) : 0;
+                
+                if (extractedMap.has(normInci)) {
+                    console.log(`MATCH FOUND for row ${index}: ${item.INCI} (${normInci}) -> ${percentage}`);
+                }
+
+                const td = document.createElement('td');
+                td.textContent = percentage;
+                row.appendChild(td);
+            });
+
+            li.textContent = `✅ ${file.name}`;
+            uploadedAllergenFiles.push(file.name);
+        } catch (e) {
+            li.textContent = `❌ ${file.name}: ${e.message}`;
+            console.error("Allergen Processing Error:", e);
+        }
+    }
+
     clearTemplateBtn.addEventListener('click', () => {
         templatePdfText = null;
         templateFileInput.value = '';
@@ -792,8 +925,8 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
     }
 
     function normalizeIngredient(str) {
-        // match exactly except for case and asterisks
-        return str.toLowerCase().replace(/\*/g, '').trim();
+        // Remove non-alphanumeric characters and lowercase for better matching
+        return str.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
     }
 
     // Text-only AI call: sends the document text inline in the prompt (no image attachment).

@@ -26,7 +26,6 @@
         <div class="blob blob-2"></div>
     </div>
 
-    <main class="container">
     <nav class="app-header">
         <div class="header-left">
             <div class="app-name" data-i18n="header_app_name">LABEL REGULATORY</div>
@@ -46,7 +45,7 @@
         </div>
     </nav>
 
-    <main class="container">
+    <main class="container" id="main-container">
         <!-- Tab: Home (API Key) -->
         <div id="tab-home" class="tab-content">
             <header>
@@ -61,11 +60,44 @@
             </section>
         </div>
 
-        <!-- Tab: Allergen Extractor (Empty) -->
+        <!-- Tab: Allergen Extractor -->
         <div id="tab-allergen" class="tab-content hidden">
-            <div class="card" style="text-align: center; padding: 4rem;">
-                <h2 data-i18n="tab_allergen">Allergen Extractor</h2>
-                <p style="color: var(--text-muted); margin-top: 1rem;">Content coming soon...</p>
+            <div class="allergen-layout">
+                <aside class="allergen-left-panel">
+                    <section class="card allergen-uploader-section" id="allergen-drop-zone">
+                        <h2 data-i18n="allergen_uploader_title">Allergens</h2>
+                        <div class="upload-content mini-uploader" id="allergen-upload-content">
+                            <svg viewBox="0 0 24 24" fill="none" class="upload-icon" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            <p data-i18n="pdf_only">Solo documentos PDF</p>
+                            <input type="file" id="allergen-file-input" accept=".pdf,application/pdf" hidden>
+                            <button class="btn btn-primary btn-sm" onclick="document.getElementById('allergen-file-input').click()" data-i18n="browse_files">Buscar Archivos</button>
+                        </div>
+                    </section>
+                    <section class="card uploaded-files-section">
+                        <h3 data-i18n="uploaded_files">Uploaded Files</h3>
+                        <div class="uploaded-files-list-container">
+                            <ul id="allergen-file-list"></ul>
+                        </div>
+                    </section>
+                </aside>
+                <main class="allergen-right-panel">
+                    <section class="card table-card">
+                        <div class="table-container">
+                            <table id="allergen-table">
+                                <thead>
+                                    <tr id="allergen-table-header">
+                                        <th class="sticky-col">INCI</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="allergen-table-body">
+                                    <!-- Initial INCI list will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </main>
             </div>
         </div>
 
@@ -179,6 +211,7 @@
         </div>
     </div>
 
+    <script src="allergens.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
