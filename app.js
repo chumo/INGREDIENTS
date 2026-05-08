@@ -1,6 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
     const translations = {
         es: {
+            header_app_name: "REGULATORIO DE ETIQUETADO",
+            tab_home: "Inicio",
+            tab_allergen: "Extractor de Alérgenos",
+            tab_validator: "Validador de Ingredientes",
+            home_subtitle: "Conéctate a un proveedor de modelos",
             app_title: "Validador de Ingredientes",
             app_subtitle: "Sube una plantilla y una etiqueta para validar la lista de ingredientes en la etiqueta.",
             api_key_label: "Clave API (OpenRouter, OpenAI, Gemini, Anthropic o Mistral)",
@@ -65,6 +70,11 @@ Devuelve exactamente este formato JSON: {"brand": "string", "project": "string",
             roi_accept: "Aceptar Selección"
         },
         en: {
+            header_app_name: "LABEL REGULATORY",
+            tab_home: "Home",
+            tab_allergen: "Allergen Extractor",
+            tab_validator: "Ingredients Validator",
+            home_subtitle: "Connect to a Model Provider",
             app_title: "Ingredients Validator",
             app_subtitle: "Upload a template and a label to validate the list of ingredients in the label.",
             api_key_label: "API Key (OpenRouter, OpenAI, Gemini, Anthropic, or Mistral)",
@@ -128,6 +138,17 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
             roi_use_full: "Use Full Image",
             roi_accept: "Accept Selection"
         }
+    };
+
+    window.switchTab = function(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        
+        document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+        document.getElementById(`tab-btn-${tabId}`).classList.add('active');
+
+        // Scroll to top when switching tabs
+        window.scrollTo(0, 0);
     };
 
     let currentLanguage = localStorage.getItem('preferredLanguage') || 'es';
@@ -1577,4 +1598,5 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
     }
 
     setupLens(labelImagePreview);
+    switchTab('home');
 });
