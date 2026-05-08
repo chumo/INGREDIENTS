@@ -744,7 +744,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         }
 
         const li = document.createElement('li');
-        li.textContent = `⏳ ${file.name}...`;
+        li.innerHTML = `<span class="status-icon"><span class="spinner-wheel"></span></span> <span class="file-name">${file.name}...</span>`;
         allergenFileList.appendChild(li);
 
         try {
@@ -800,10 +800,10 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 row.appendChild(td);
             });
 
-            li.textContent = `✅ ${file.name}`;
+            li.innerHTML = `<span class="status-icon">✅</span> <span class="file-name">${file.name}</span>`;
             uploadedAllergenFiles.push(file.name);
         } catch (e) {
-            li.textContent = `❌ ${file.name}: ${e.message}`;
+            li.innerHTML = `<span class="status-icon">❌</span> <span class="file-name" title="${e.message}">${file.name}</span>`;
             console.error("Allergen Processing Error:", e);
         }
     }

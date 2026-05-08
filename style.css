@@ -461,6 +461,21 @@ input[type="password"]:focus {
     animation: dash 1.5s ease-in-out infinite;
 }
 
+.spinner-wheel {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    border-top-color: var(--primary);
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
 @keyframes rotate {
     100% { transform: rotate(360deg); }
 }
@@ -946,6 +961,24 @@ input[type="password"]:focus {
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     font-size: 0.85rem;
     color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.status-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    flex-shrink: 0;
+}
+
+.file-name {
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .table-card {
