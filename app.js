@@ -74,7 +74,13 @@ Devuelve exactamente este formato JSON: {"brand": "string", "project": "string",
 - product_code: típicamente un número de 7 dígitos cerca del nombre del producto.
 - printing_date: típicamente se encuentra como nota al pie o en otro lugar del documento. Convierte al formato YYYY-mm-dd.
 - allergens: lista de nombres INCI con su porcentaje de concentración correspondiente. Usa ÚNICAMENTE los nombres INCI de esta lista: {inci_list}. Algunos no tendrán porcentaje, en ese caso asume 0.
-Formato JSON esperado: {"product_code": "string", "printing_date": "string", "allergens": [{"inci": "string", "percentage": number}]}`
+Formato JSON esperado: {"product_code": "string", "printing_date": "string", "allergens": [{"inci": "string", "percentage": number}]}`,
+            product_code: "Código de Producto",
+            printing_date: "Fecha de Impresión",
+            copy_to_clipboard: "Copiar al Portapapeles",
+            concentrations_copied: "¡Copiado!",
+            allergen_empty_msg: "Sube un PDF para ver los detalles",
+            concentration_percent: "Concentración %"
         },
         en: {
             header_app_name: "LABEL REGULATORY",
@@ -150,7 +156,14 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
 - product_code: typically a 7-digit number near the product name.
 - printing_date: typically found as a footnote or elsewhere in the document. Convert to YYYY-mm-dd format.
 - allergens: list of INCI names with their corresponding concentration percentage. Use ONLY the INCI names provided in this list: {inci_list}. Some won't have a percentage, in such case assume 0.
-Expected JSON format: {"product_code": "string", "printing_date": "string", "allergens": [{"inci": "string", "percentage": number}]}`
+Expected JSON format: {"product_code": "string", "printing_date": "string", "allergens": [{"inci": "string", "percentage": number}]}`,
+            product_code: "Product Code",
+            printing_date: "Printing Date",
+            copy_to_clipboard: "Copy to Clipboard",
+            concentrations_copied: "Copied!",
+            allergen_empty_msg: "Upload a PDF to see details",
+            concentration_percent: "Concentration %"
+
         }
     };
 
@@ -211,12 +224,20 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     // Allergen Extractor Elements
     const allergenDropZone = document.getElementById('allergen-drop-zone');
     const allergenFileInput = document.getElementById('allergen-file-input');
-    const allergenFileList = document.getElementById('allergen-file-list');
+    const allergenInfoPanel = document.getElementById('allergen-info-panel');
+    const allergenFileInfoDisplay = document.getElementById('allergen-file-info-display');
+    const allergenEmptyState = document.getElementById('allergen-empty-state');
+    const allergenStatusIcon = document.getElementById('allergen-status-icon');
+    const allergenFilename = document.getElementById('allergen-current-filename');
+    const metaProductCode = document.getElementById('meta-product-code');
+    const metaPrintingDate = document.getElementById('meta-printing-date');
+    const copyConcentrationsBtn = document.getElementById('copy-concentrations-btn');
     const allergenTableBody = document.getElementById('allergen-table-body');
     const allergenTableHeader = document.getElementById('allergen-table-header');
     
     let uploadedAllergenFiles = [];
     let allergenDataMap = new Map(); // Map of INCI -> { columnKey -> percentage }
+
 
 
     window.setLanguage = function(lang) {
@@ -713,15 +734,29 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     function initAllergenTable() {
         if (typeof allergens === 'undefined') return;
         allergenTableBody.innerHTML = '';
+        
+        // Ensure header has exactly two columns
+        allergenTableHeader.innerHTML = `
+            <th class="sticky-col">INCI</th>
+            <th data-i18n="concentration_percent">${translations[currentLanguage].concentration_percent || "Concentración %"}</th>
+        `;
+
         allergens.forEach(item => {
             const row = document.createElement('tr');
-            const td = document.createElement('td');
-            td.className = 'sticky-col';
-            td.textContent = item.INCI;
-            row.appendChild(td);
+            const tdInci = document.createElement('td');
+            tdInci.className = 'sticky-col';
+            tdInci.textContent = item.INCI;
+            row.appendChild(tdInci);
+
+            const tdValue = document.createElement('td');
+            tdValue.className = 'concentration-value';
+            tdValue.textContent = '0';
+            row.appendChild(tdValue);
+
             allergenTableBody.appendChild(row);
         });
     }
+
 
     initAllergenTable();
 
@@ -743,9 +778,17 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             return;
         }
 
-        const li = document.createElement('li');
-        li.innerHTML = `<span class="status-icon"><span class="spinner-wheel"></span></span> <span class="file-name">${file.name}...</span>`;
-        allergenFileList.appendChild(li);
+        // Reset UI for new file
+        allergenEmptyState.classList.add('hidden');
+        allergenFileInfoDisplay.classList.remove('hidden');
+        allergenStatusIcon.innerHTML = '<span class="spinner-wheel"></span>';
+        allergenFilename.textContent = file.name;
+        metaProductCode.textContent = '...';
+        metaPrintingDate.textContent = '...';
+        
+        // Reset table values
+        const valueCells = allergenTableBody.querySelectorAll('.concentration-value');
+        valueCells.forEach(cell => cell.textContent = '0');
 
         try {
             const { text } = await parsePdfText(file);
@@ -756,21 +799,17 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             
             console.log("Allergen Extraction Result:", result);
 
-            const productCode = result.product_code || 'Unknown';
-            const rawDate = result.printing_date || 'Unknown';
+            const productCode = result.product_code || '—';
+            const rawDate = result.printing_date || '—';
             const printingDate = rawDate.replace(/\./g, '-');
-            const colKey = `${productCode}_${printingDate}`;
             
-            // Add column header
-            const th = document.createElement('th');
-            th.textContent = colKey;
-            allergenTableHeader.appendChild(th);
+            metaProductCode.textContent = productCode;
+            metaPrintingDate.textContent = printingDate;
             
             // Map extracted allergens
             const extractedMap = new Map();
             if (result.allergens && Array.isArray(result.allergens)) {
                 result.allergens.forEach(a => {
-                    // Try both 'inci' and 'name' properties
                     const name = a.inci || a.name || "";
                     const normInci = normalizeIngredient(name);
                     if (normInci) {
@@ -779,12 +818,8 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 });
             }
 
-            console.log("Extracted Map size:", extractedMap.size);
-
             // Update table rows
             const rows = allergenTableBody.querySelectorAll('tr');
-            console.log(`Updating ${rows.length} rows. Allergens in map:`, Array.from(extractedMap.keys()));
-            
             rows.forEach((row, index) => {
                 const item = allergens[index];
                 if (!item) return;
@@ -792,22 +827,50 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 const normInci = normalizeIngredient(item.INCI);
                 const percentage = extractedMap.has(normInci) ? extractedMap.get(normInci) : 0;
                 
-                if (extractedMap.has(normInci)) {
-                    console.log(`MATCH FOUND for row ${index}: ${item.INCI} (${normInci}) -> ${percentage}`);
+                const valueCell = row.querySelector('.concentration-value');
+                if (valueCell) {
+                    valueCell.textContent = percentage;
                 }
-
-                const td = document.createElement('td');
-                td.textContent = percentage;
-                row.appendChild(td);
             });
 
-            li.innerHTML = `<span class="status-icon">✅</span> <span class="file-name">${file.name}</span>`;
-            uploadedAllergenFiles.push(file.name);
+            allergenStatusIcon.innerHTML = '✅';
         } catch (e) {
-            li.innerHTML = `<span class="status-icon">❌</span> <span class="file-name" title="${e.message}">${file.name}</span>`;
+            allergenStatusIcon.innerHTML = '❌';
             console.error("Allergen Processing Error:", e);
+            alert("Error processing PDF: " + e.message);
         }
     }
+
+    if (copyConcentrationsBtn) {
+        copyConcentrationsBtn.addEventListener('click', () => {
+            const productCode = metaProductCode.textContent.trim();
+            const printingDate = metaPrintingDate.textContent.trim();
+            const identifier = `${productCode}_${printingDate}`;
+
+            const valueCells = allergenTableBody.querySelectorAll('.concentration-value');
+            const values = Array.from(valueCells).map(cell => cell.textContent.trim().replace(/,/g, '.')); 
+            
+            const clipboardText = [identifier, ...values].join('\t');
+            
+            navigator.clipboard.writeText(clipboardText).then(() => {
+                const originalText = copyConcentrationsBtn.querySelector('[data-i18n]').textContent;
+                const successText = translations[currentLanguage].concentrations_copied || "Copied!";
+                
+                const span = copyConcentrationsBtn.querySelector('[data-i18n]');
+                span.textContent = successText;
+                copyConcentrationsBtn.classList.add('success');
+                
+                setTimeout(() => {
+                    span.textContent = originalText;
+                    copyConcentrationsBtn.classList.remove('success');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                alert("Failed to copy to clipboard");
+            });
+        });
+    }
+
 
     clearTemplateBtn.addEventListener('click', () => {
         templatePdfText = null;

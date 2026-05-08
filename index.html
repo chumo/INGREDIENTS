@@ -75,10 +75,31 @@
                             <button class="btn btn-primary btn-sm" onclick="document.getElementById('allergen-file-input').click()" data-i18n="browse_files">Buscar Archivos</button>
                         </div>
                     </section>
-                    <section class="card uploaded-files-section">
-                        <h3 data-i18n="uploaded_files">Uploaded Files</h3>
-                        <div class="uploaded-files-list-container">
-                            <ul id="allergen-file-list"></ul>
+                    <section class="card allergen-info-section" id="allergen-info-panel">
+                        <div id="allergen-file-info-display" class="hidden">
+                            <div class="allergen-file-header">
+                                <span id="allergen-status-icon" class="status-icon"></span>
+                                <span id="allergen-current-filename" class="file-name-display"></span>
+                            </div>
+                            <div class="allergen-metadata">
+                                <div class="meta-row">
+                                    <span class="meta-label" data-i18n="product_code">Código de Producto</span>:
+                                    <span id="meta-product-code" class="meta-value">—</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span class="meta-label" data-i18n="printing_date">Fecha de Impresión</span>:
+                                    <span id="meta-printing-date" class="meta-value">—</span>
+                                </div>
+                            </div>
+                            <button class="btn btn-secondary btn-sm" id="copy-concentrations-btn" style="margin-top: 1.5rem; width: 100%; justify-content: center;">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                </svg>
+                                <span data-i18n="copy_to_clipboard">Copiar al Portapapeles</span>
+                            </button>
+                        </div>
+                        <div id="allergen-empty-state" class="empty-state-msg">
+                            <p data-i18n="allergen_empty_msg">Sube un PDF para ver los detalles</p>
                         </div>
                     </section>
                 </aside>
@@ -89,6 +110,7 @@
                                 <thead>
                                     <tr id="allergen-table-header">
                                         <th class="sticky-col">INCI</th>
+                                        <th data-i18n="concentration_percent">Concentración %</th>
                                     </tr>
                                 </thead>
                                 <tbody id="allergen-table-body">
