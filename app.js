@@ -224,6 +224,9 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     const resultContent = document.getElementById('result-content');
     const labelTextarea = document.getElementById('label-ingredients-edit');
     const labelBackdrop = document.getElementById('label-ingredients-backdrop');
+    const modelInfo = document.getElementById('model-info');
+    const providerName = document.getElementById('provider-name');
+    const modelVersion = document.getElementById('model-version');
 
     // Allergen Extractor Elements
     const allergenDropZone = document.getElementById('allergen-drop-zone');
@@ -535,6 +538,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     const savedKey = localStorage.getItem('openRouterApiKey');
     if (savedKey) {
         apiKeyInput.value = savedKey;
+        validateState();
     }
 
     // Save API key on change
@@ -542,6 +546,47 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         localStorage.setItem('openRouterApiKey', e.target.value);
         validateState();
     });
+
+    function updateModelDisplay(key) {
+        if (!key) {
+            modelInfo.classList.add('hidden');
+            return;
+        }
+
+        let provider = '';
+        let version = '';
+        let providerClass = '';
+
+        if (key.startsWith('AIza')) {
+            provider = 'Gemini';
+            version = 'Gemini 2.5 Flash';
+            providerClass = 'provider-gemini';
+        } else if (key.startsWith('sk-ant-')) {
+            provider = 'Anthropic';
+            version = 'Claude Haiku 4.5';
+            providerClass = 'provider-anthropic';
+        } else if (/^[a-zA-Z0-9]{32}$/.test(key)) {
+            provider = 'Mistral';
+            version = 'Mistral Small / OCR';
+            providerClass = 'provider-mistral';
+        } else if (key.startsWith('sk-or-v1-')) {
+            provider = 'OpenRouter';
+            version = 'Auto / Free';
+            providerClass = 'provider-openrouter';
+        } else if (key.startsWith('sk-')) {
+            provider = 'OpenAI';
+            version = 'GPT-4o Mini';
+            providerClass = 'provider-openai';
+        } else {
+            modelInfo.classList.add('hidden');
+            return;
+        }
+
+        providerName.textContent = provider;
+        providerName.className = 'provider-badge ' + providerClass;
+        modelVersion.textContent = version;
+        modelInfo.classList.remove('hidden');
+    }
 
     // ROI Selector State & Elements
     const roiModal = document.getElementById('roi-modal');
@@ -1026,8 +1071,10 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     }
 
     function validateState() {
-        const hasKey = apiKeyInput.value.trim().length > 0;
+        const key = apiKeyInput.value.trim();
+        const hasKey = key.length > 0;
         extractBtn.disabled = !(hasKey && templatePdfText && labelBase64);
+        updateModelDisplay(key);
     }
 
     function setProcessingUI(isLoading, text = "") {
