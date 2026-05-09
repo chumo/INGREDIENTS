@@ -201,6 +201,7 @@ body {
 
 .tab-content header {
     margin-bottom: 0.5rem;
+    text-align: center;
 }
 
 .tab-content h1 {
@@ -965,6 +966,7 @@ input[type="password"]:focus {
 /* Allergen Extractor Layout */
 .allergen-layout {
     display: flex;
+    justify-content: center;
     gap: 1.5rem;
     height: calc(100vh - 280px);
     min-height: 500px;
@@ -980,6 +982,7 @@ input[type="password"]:focus {
 
 .allergen-right-panel {
     flex-grow: 1;
+    max-width: 600px;
     overflow: hidden;
 }
 
@@ -1165,4 +1168,17 @@ input[type="password"]:focus {
 #allergen-table td.concentration-value {
     color: var(--text-main);
     font-weight: 500;
+}
+
+@media (max-width: 1024px) {
+    .allergen-layout {
+        flex-direction: column;
+        height: auto;
+        align-items: center;
+    }
+    
+    .allergen-left-panel, .allergen-right-panel {
+        width: 100%;
+        max-width: 600px;
+    }
 }
