@@ -72,11 +72,11 @@ Devuelve exactamente este formato JSON: {"brand": "string", "project": "string",
             roi_accept: "Aceptar Selección",
             allergen_uploader_title: "Alérgenos",
             uploaded_files: "Archivos Subidos",
-            allergen_prompt: `Extrae la siguiente información del texto proporcionado y devuélvela estrictamente como un objeto JSON válido:
-- product_code: típicamente un número de 7 dígitos cerca del nombre del producto.
-- printing_date: típicamente se encuentra como nota al pie o en otro lugar del documento. Convierte al formato YYYY-mm-dd.
-- allergens: lista de nombres INCI con su porcentaje de concentración correspondiente. Usa ÚNICAMENTE los nombres INCI de esta lista: {inci_list}. Algunos no tendrán porcentaje, en ese caso asume 0.
-Formato JSON esperado: {"product_code": "string", "printing_date": "string", "allergens": [{"inci": "string", "percentage": number}]}`,
+            allergen_prompt: `Extract the following information from the provided document (text or images) and return it strictly as a valid JSON object:
+- product_code: typically a 7-digit number near the product name.
+- printing_date: typically found as a footnote or elsewhere in the document. Convert to YYYY-mm-dd format.
+- allergens: list of INCI names with their corresponding concentration percentage. Use ONLY the INCI names provided in this list: {inci_list}. Some won't have a percentage, in such case assume 0.
+Expected JSON format: {"product_code": "string", "printing_date": "string", "allergens": [{"inci": "string", "percentage": number}]}`,
             product_code: "Código de Producto",
             printing_date: "Fecha de Impresión",
             copy_to_clipboard: "Copiar al Portapapeles",
@@ -156,7 +156,7 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
             roi_accept: "Accept Selection",
             allergen_uploader_title: "Allergens",
             uploaded_files: "Uploaded Files",
-            allergen_prompt: `Extract the following information from the provided text and return it strictly as a valid JSON object:
+            allergen_prompt: `Extract the following information from the provided document (text or images) and return it strictly as a valid JSON object:
 - product_code: typically a 7-digit number near the product name.
 - printing_date: typically found as a footnote or elsewhere in the document. Convert to YYYY-mm-dd format.
 - allergens: list of INCI names with their corresponding concentration percentage. Use ONLY the INCI names provided in this list: {inci_list}. Some won't have a percentage, in such case assume 0.
@@ -688,13 +688,23 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             }
             const { text, pageCount } = await parsePdfText(file);
             templatePdfText = text;
+            
+            // Check if text is sparse, if so we might need OCR later
+            const isImageBased = text.trim().length < 150;
+            if (isImageBased) {
+                console.log("Template PDF is image-based, will use OCR for extraction.");
+                window._templateImages = await renderPdfToImages(file);
+            } else {
+                window._templateImages = null;
+            }
+
             templatePdfName.textContent = file.name;
             const plural = currentLanguage === 'es' ? (pageCount !== 1 ? 's' : '') : (pageCount !== 1 ? 's' : '');
             templatePdfMeta.textContent = translations[currentLanguage].pdf_meta
                 .replace('{pageCount}', pageCount)
                 .replace('{plural}', plural)
                 .replace('{size}', (file.size / 1024).toFixed(0))
-                .replace('{charCount}', text.length.toLocaleString());
+                .replace('{charCount}', text.length.toLocaleString()) + (isImageBased ? " (OCR Mode)" : "");
             templateFileInfo.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
             templateUploadContent.classList.add('hidden');
             templatePreviewContainer.classList.remove('hidden');
@@ -800,7 +810,21 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             const { text } = await parsePdfText(file);
             const inciList = (typeof allergens !== 'undefined') ? allergens.map(a => a.INCI).join(', ') : '';
             const prompt = translations[currentLanguage].allergen_prompt.replace('{inci_list}', inciList);
-            const resultText = await fetchAiTextExtraction(apiKey, text, prompt);
+            
+            let resultText;
+            if (text.trim().length > 150) {
+                // Sufficient text, use text-based extraction
+                resultText = await fetchAiTextExtraction(apiKey, text, prompt);
+            } else {
+                // Scanned PDF or very little text, use vision-based extraction (OCR)
+                console.log("PDF has very little text, switching to Vision/OCR mode...");
+                const images = await renderPdfToImages(file);
+                resultText = await fetchAiExtraction(apiKey, images, prompt);
+            }
+
+            // Clean raw text
+            resultText = resultText.replace(/\*/g, '');
+
             const result = extractJsonSafely(resultText);
             
             console.log("Allergen Extraction Result:", result);
@@ -910,17 +934,71 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         });
     }
 
-    async function renderPdfToImage(file) {
+    async function renderPdfToImage(file, maxPages = 10) {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 2.0 });
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-        return canvas.toDataURL('image/jpeg', 0.8);
+        const pageCount = Math.min(pdf.numPages, maxPages);
+        
+        if (pageCount === 1) {
+            const page = await pdf.getPage(1);
+            const viewport = page.getViewport({ scale: 2.0 });
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+            return canvas.toDataURL('image/jpeg', 0.8);
+        } else {
+            // Render multiple pages and stitch them vertically
+            const pageData = [];
+            let totalHeight = 0;
+            let maxWidth = 0;
+            
+            for (let i = 1; i <= pageCount; i++) {
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({ scale: 1.5 }); // Slightly lower scale for multi-page to avoid memory issues
+                pageData.push({ page, viewport });
+                totalHeight += viewport.height;
+                maxWidth = Math.max(maxWidth, viewport.width);
+            }
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = maxWidth;
+            canvas.height = totalHeight;
+            const ctx = canvas.getContext('2d');
+            
+            let currentY = 0;
+            for (const item of pageData) {
+                const pageCanvas = document.createElement('canvas');
+                pageCanvas.width = item.viewport.width;
+                pageCanvas.height = item.viewport.height;
+                const pageCtx = pageCanvas.getContext('2d');
+                await item.page.render({ canvasContext: pageCtx, viewport: item.viewport }).promise;
+                
+                ctx.drawImage(pageCanvas, (maxWidth - item.viewport.width) / 2, currentY);
+                currentY += item.viewport.height;
+            }
+            return canvas.toDataURL('image/jpeg', 0.7);
+        }
+    }
+
+    async function renderPdfToImages(file, maxPages = 10) {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const pageCount = Math.min(pdf.numPages, maxPages);
+        const images = [];
+        
+        for (let i = 1; i <= pageCount; i++) {
+            const page = await pdf.getPage(i);
+            const viewport = page.getViewport({ scale: 2.0 });
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+            images.push(canvas.toDataURL('image/jpeg', 0.8));
+        }
+        return images;
     }
 
     // Parse all text from a PDF using PDF.js (no rendering needed)
@@ -1086,7 +1164,8 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         throw lastError;
     }
 
-    async function fetchAiExtraction(apiKey, imageBase64, prompt, maxRetries = 3) {
+    async function fetchAiExtraction(apiKey, imageBase64OrArray, prompt, maxRetries = 3) {
+        const images = Array.isArray(imageBase64OrArray) ? imageBase64OrArray : [imageBase64OrArray];
         let lastError = null;
 
         let apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
@@ -1109,12 +1188,37 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             aiModel = 'mistral-ocr-2512';
         } else if (!apiKey.startsWith('sk-or-v1-')) {
             apiUrl = 'https://api.openai.com/v1/chat/completions';
-            aiModel = 'gpt-4o-mini'; // Extremely fast and supports vision + json formatting natively
+            aiModel = 'gpt-4o-mini'; 
         }
 
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
                 if (isMistralFormat) {
+                    // Mistral OCR processes the entire document. If it's a list of images, we'll combine them for Mistral
+                    // since its OCR endpoint usually expects a single document/image.
+                    let targetImage = images[0];
+                    if (images.length > 1) {
+                        console.log("Stitching images for Mistral OCR...");
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const loadedImages = await Promise.all(images.map(src => {
+                            return new Promise(resolve => {
+                                const img = new Image();
+                                img.onload = () => resolve(img);
+                                img.src = src;
+                            });
+                        }));
+                        
+                        canvas.width = Math.max(...loadedImages.map(img => img.width));
+                        canvas.height = loadedImages.reduce((sum, img) => sum + img.height, 0);
+                        let currentY = 0;
+                        loadedImages.forEach(img => {
+                            ctx.drawImage(img, (canvas.width - img.width) / 2, currentY);
+                            currentY += img.height;
+                        });
+                        targetImage = canvas.toDataURL('image/jpeg', 0.7);
+                    }
+
                     const ocrResponse = await fetch('https://api.mistral.ai/v1/ocr', {
                         method: 'POST',
                         headers: {
@@ -1125,7 +1229,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                             model: "mistral-ocr-2512",
                             document: {
                                 type: "document_url",
-                                document_url: imageBase64
+                                document_url: targetImage
                             }
                         })
                     });
@@ -1156,80 +1260,66 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 }
 
                 let payload;
-                let headers = {
-                    'Content-Type': 'application/json'
-                };
+                let headers = { 'Content-Type': 'application/json' };
 
                 if (isGeminiFormat) {
-                    const base64Data = imageBase64.split(',')[1];
-                    const mimeType = imageBase64.split(';')[0].split(':')[1];
+                    const parts = [{ text: prompt }];
+                    images.forEach(img => {
+                        const base64Data = img.split(',')[1];
+                        const mimeType = img.split(';')[0].split(':')[1];
+                        parts.push({
+                            inline_data: {
+                                mime_type: mimeType || 'image/jpeg',
+                                data: base64Data
+                            }
+                        });
+                    });
 
                     payload = {
-                        contents: [
-                            {
-                                parts: [
-                                    { text: prompt },
-                                    {
-                                        inline_data: {
-                                            mime_type: mimeType || 'image/jpeg',
-                                            data: base64Data
-                                        }
-                                    }
-                                ]
-                            }
-                        ],
-                        generationConfig: {
-                            responseMimeType: "application/json"
-                        }
+                        contents: [{ parts }],
+                        generationConfig: { responseMimeType: "application/json" }
                     };
                 } else if (isAnthropicFormat) {
-                    const base64Data = imageBase64.split(',')[1];
-                    const mimeType = imageBase64.split(';')[0].split(':')[1];
-
                     headers['x-api-key'] = apiKey;
                     headers['anthropic-version'] = '2023-06-01';
                     headers['anthropic-dangerous-direct-browser-access'] = 'true';
 
+                    const content = [];
+                    images.forEach(img => {
+                        const base64Data = img.split(',')[1];
+                        const mimeType = img.split(';')[0].split(':')[1];
+                        content.push({
+                            type: "image",
+                            source: {
+                                type: "base64",
+                                media_type: mimeType || 'image/jpeg',
+                                data: base64Data
+                            }
+                        });
+                    });
+                    content.push({ type: "text", text: prompt });
+
                     payload = {
                         model: aiModel,
                         max_tokens: 4096,
-                        messages: [
-                            {
-                                role: "user",
-                                content: [
-                                    {
-                                        type: "image",
-                                        source: {
-                                            type: "base64",
-                                            media_type: mimeType || 'image/jpeg',
-                                            data: base64Data
-                                        }
-                                    },
-                                    { type: "text", text: prompt }
-                                ]
-                            }
-                        ]
+                        messages: [{ role: "user", content }]
                     };
                 } else {
                     headers['Authorization'] = `Bearer ${apiKey}`;
-                    headers['HTTP-Referer'] = window.location.href; // Ignored by OpenAI, required by OpenRouter
+                    headers['HTTP-Referer'] = window.location.href;
                     headers['X-Title'] = 'Ingredient Extractor';
+
+                    const content = [{ type: "text", text: prompt }];
+                    images.forEach(img => {
+                        content.push({ type: "image_url", image_url: { url: img } });
+                    });
 
                     payload = {
                         model: aiModel,
                         max_tokens: 4096,
-                        messages: [
-                            {
-                                role: "user",
-                                content: [
-                                    { type: "text", text: prompt },
-                                    { type: "image_url", image_url: { url: imageBase64 } }
-                                ]
-                            }
-                        ]
+                        messages: [{ role: "user", content }]
                     };
 
-                    // OpenAI guarantees proper JSON output with this flag
                     if (apiUrl === 'https://api.openai.com/v1/chat/completions') {
                         payload.response_format = { type: "json_object" };
                     }
@@ -1335,7 +1425,25 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             const templatePrompt = translations[currentLanguage].template_prompt;
             const labelPrompt = translations[currentLanguage].label_prompt;
 
-            let templateResponseText = await fetchAiTextExtraction(apiKey, templatePdfText, templatePrompt);
+            let templateResponseText;
+            if (templatePdfText.trim().length > 150) {
+                templateResponseText = await fetchAiTextExtraction(apiKey, templatePdfText, templatePrompt);
+            } else {
+                console.log("Template is image-based, using Vision/OCR...");
+                // Note: file is not directly available here, so we'd need to have pre-rendered or pass it.
+                // However, since we're in the click handler and we only have templatePdfText, 
+                // we should have rendered it during upload.
+                // Let's assume for now we use the text-based one OR we should have stored images.
+                // To be robust, let's look for where we handle template upload.
+                // Actually, I'll update the upload logic to store images if needed.
+                if (window._templateImages) {
+                    templateResponseText = await fetchAiExtraction(apiKey, window._templateImages, templatePrompt);
+                } else {
+                    // Fallback to text if images weren't captured (shouldn't happen with updated upload logic)
+                    templateResponseText = await fetchAiTextExtraction(apiKey, templatePdfText, templatePrompt);
+                }
+            }
+            
             let labelResponseText = await fetchAiExtraction(apiKey, labelBase64, labelPrompt);
 
             // Clean asterisks globally from the raw text
