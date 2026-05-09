@@ -76,13 +76,15 @@ Devuelve exactamente este formato JSON: {"brand": "string", "project": "string",
 - product_code: typically a 7-digit number near the product name.
 - printing_date: typically found as a footnote or elsewhere in the document. Convert to YYYY-mm-dd format.
 - allergens: list of INCI names with their corresponding concentration percentage. Use ONLY the INCI names provided in this list: {inci_list}. Some won't have a percentage, in such case assume 0.
-Expected JSON format: {"product_code": "string", "printing_date": "string", "allergens": [{"inci": "string", "percentage": number}]}`,
+- extra_incis: list of ALL OTHER INCI names found in the document with their corresponding concentration percentage. Skip those already included in the 'allergens' list.
+Expected JSON format: {"product_code": "string", "printing_date": "string", "allergens": [{"inci": "string", "percentage": number}], "extra_incis": [{"inci": "string", "percentage": number}]}`,
             product_code: "Código de Producto",
             printing_date: "Fecha de Impresión",
             copy_to_clipboard: "Copiar al Portapapeles",
             concentrations_copied: "¡Copiado!",
             allergen_empty_msg: "Sube un PDF para ver los detalles",
-            concentration_percent: "Concentración %"
+            concentration_percent: "Concentración %",
+            extra_incis_title: "Otros INCI encontrados"
         },
         en: {
             header_app_name: "LABEL REGULATORY",
@@ -160,13 +162,15 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
 - product_code: typically a 7-digit number near the product name.
 - printing_date: typically found as a footnote or elsewhere in the document. Convert to YYYY-mm-dd format.
 - allergens: list of INCI names with their corresponding concentration percentage. Use ONLY the INCI names provided in this list: {inci_list}. Some won't have a percentage, in such case assume 0.
-Expected JSON format: {"product_code": "string", "printing_date": "string", "allergens": [{"inci": "string", "percentage": number}]}`,
+- extra_incis: list of ALL OTHER INCI names found in the document with their corresponding concentration percentage. Skip those already included in the 'allergens' list.
+Expected JSON format: {"product_code": "string", "printing_date": "string", "allergens": [{"inci": "string", "percentage": number}], "extra_incis": [{"inci": "string", "percentage": number}]}`,
             product_code: "Product Code",
             printing_date: "Printing Date",
             copy_to_clipboard: "Copy to Clipboard",
             concentrations_copied: "Copied!",
             allergen_empty_msg: "Upload a PDF to see details",
-            concentration_percent: "Concentration %"
+            concentration_percent: "Concentration %",
+            extra_incis_title: "Other INCI names found"
 
         }
     };
@@ -241,6 +245,8 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     const copyConcentrationsBtn = document.getElementById('copy-concentrations-btn');
     const allergenTableBody = document.getElementById('allergen-table-body');
     const allergenTableHeader = document.getElementById('allergen-table-header');
+    const allergenExtraIncisContainer = document.getElementById('allergen-extra-incis-container');
+    const allergenExtraIncisList = document.getElementById('allergen-extra-incis-list');
     
     let uploadedAllergenFiles = [];
     let allergenDataMap = new Map(); // Map of INCI -> { columnKey -> percentage }
@@ -846,6 +852,8 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         allergenFilename.textContent = file.name;
         metaProductCode.textContent = '...';
         metaPrintingDate.textContent = '...';
+        allergenExtraIncisContainer.classList.add('hidden');
+        allergenExtraIncisList.innerHTML = '';
         
         // Reset table values
         const valueCells = allergenTableBody.querySelectorAll('.concentration-value');
@@ -907,6 +915,23 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                     valueCell.textContent = percentage;
                 }
             });
+            
+            // Display extra INCI names (only if percentage > 0)
+            if (result.extra_incis && Array.isArray(result.extra_incis)) {
+                const filtered = result.extra_incis.filter(a => {
+                    const p = parseFloat(String(a.percentage || 0).replace(',', '.'));
+                    return p > 0;
+                });
+
+                if (filtered.length > 0) {
+                    allergenExtraIncisList.innerHTML = filtered.map(a => `<div>${a.inci || a.name || ''} (${a.percentage}%)</div>`).join('');
+                    allergenExtraIncisContainer.classList.remove('hidden');
+                } else {
+                    allergenExtraIncisContainer.classList.add('hidden');
+                }
+            } else {
+                allergenExtraIncisContainer.classList.add('hidden');
+            }
 
             allergenStatusIcon.innerHTML = '✅';
         } catch (e) {
