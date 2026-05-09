@@ -948,7 +948,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             const identifier = `${productCode}_${printingDate}`;
 
             const valueCells = allergenTableBody.querySelectorAll('.concentration-value');
-            const values = Array.from(valueCells).map(cell => cell.textContent.trim().replace(/,/g, '.')); 
+            const values = Array.from(valueCells).map(cell => cell.textContent.trim().replace(/\./g, ',')); 
             
             const clipboardText = [identifier, ...values].join('\t');
             
