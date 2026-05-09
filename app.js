@@ -243,6 +243,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     window.setLanguage = function(lang) {
         currentLanguage = lang;
         localStorage.setItem('preferredLanguage', lang);
+        document.documentElement.lang = lang;
         
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n');
@@ -1795,5 +1796,32 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     }
 
     setupLens(labelImagePreview);
+
+    // Browser Translation Detection
+    const initTranslationDetection = () => {
+        const target = document.documentElement;
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes') {
+                    const { attributeName } = mutation;
+                    const classList = target.classList;
+                    
+                    // Check for Google Translate classes or lang attribute changes
+                    const isGoogleTranslated = classList.contains('translated-ltr') || classList.contains('translated-rtl');
+                    const isLangChanged = attributeName === 'lang' && target.getAttribute('lang') !== currentLanguage;
+                    const isEdgeTranslated = target.hasAttribute('_msttexthash') || target.hasAttribute('_msthash');
+
+                    if (isGoogleTranslated || isLangChanged || isEdgeTranslated) {
+                        console.warn('Automatic translation detected. This may interfere with literal ingredient extraction.');
+                        // We could show a UI warning here if needed
+                    }
+                }
+            });
+        });
+
+        observer.observe(target, { attributes: true });
+    };
+    initTranslationDetection();
+
     switchTab('home');
 });
