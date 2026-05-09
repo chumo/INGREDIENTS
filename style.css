@@ -1084,3 +1084,30 @@ input[type="password"]:focus {
 #allergen-table td.sticky-col {
     background-color: #1e293b !important; /* Opaque background */
 }
+
+/* Editable Table Cells & Metadata */
+.concentration-value[contenteditable="true"],
+.meta-value[contenteditable="true"] {
+    cursor: text;
+    transition: all 0.2s;
+    border-radius: 4px;
+    padding: 2px 4px;
+}
+
+.concentration-value[contenteditable="true"]:hover,
+.meta-value[contenteditable="true"]:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.concentration-value[contenteditable="true"]:focus,
+.meta-value[contenteditable="true"]:focus {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+    outline: 1px solid var(--primary);
+    outline-offset: -1px;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+}
+
+#allergen-table td.concentration-value {
+    color: var(--text-main);
+    font-weight: 500;
+}

@@ -751,6 +751,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
 
             const tdValue = document.createElement('td');
             tdValue.className = 'concentration-value';
+            tdValue.setAttribute('contenteditable', 'true');
             tdValue.textContent = '0';
             row.appendChild(tdValue);
 
