@@ -75,8 +75,8 @@ Devuelve exactamente este formato JSON: {"brand": "string", "project": "string",
             allergen_prompt: `Extract the following information from the provided document (text or images) and return it strictly as a valid JSON object:
 - product_code: typically a 7-digit number near the product name.
 - printing_date: typically found as a footnote or elsewhere in the document. Convert to YYYY-mm-dd format.
-- allergens: list of INCI names with their corresponding concentration percentage. Use ONLY the INCI names provided in this list: {inci_list}. Some won't have a percentage, in such case assume 0.
-- extra_incis: list of ALL OTHER INCI names found in the document with their corresponding concentration percentage. Skip those already included in the 'allergens' list.
+- allergens: list of INCI names with their corresponding concentration percentage. Use ONLY the INCI names provided in this list: {inci_list}. Some won't have a percentage, in such case assume 0. If a concentration is given as a range (e.g. '0.01 - 0.05%'), always return the upper value of that range (e.g. 0.05).
+- extra_incis: list of ALL OTHER INCI names found in the document with their corresponding concentration percentage. Skip those already included in the 'allergens' list. If a range is found, always use the upper value.
 Expected JSON format: {"product_code": "string", "printing_date": "string", "allergens": [{"inci": "string", "percentage": number}], "extra_incis": [{"inci": "string", "percentage": number}]}`,
             product_code: "Código de Producto",
             printing_date: "Fecha de Impresión",
@@ -161,8 +161,8 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
             allergen_prompt: `Extract the following information from the provided document (text or images) and return it strictly as a valid JSON object:
 - product_code: typically a 7-digit number near the product name.
 - printing_date: typically found as a footnote or elsewhere in the document. Convert to YYYY-mm-dd format.
-- allergens: list of INCI names with their corresponding concentration percentage. Use ONLY the INCI names provided in this list: {inci_list}. Some won't have a percentage, in such case assume 0.
-- extra_incis: list of ALL OTHER INCI names found in the document with their corresponding concentration percentage. Skip those already included in the 'allergens' list.
+- allergens: list of INCI names with their corresponding concentration percentage. Use ONLY the INCI names provided in this list: {inci_list}. Some won't have a percentage, in such case assume 0. If a concentration is given as a range (e.g. '0.01 - 0.05%'), always return the upper value of that range (e.g. 0.05).
+- extra_incis: list of ALL OTHER INCI names found in the document with their corresponding concentration percentage. Skip those already included in the 'allergens' list. If a range is found, always use the upper value.
 Expected JSON format: {"product_code": "string", "printing_date": "string", "allergens": [{"inci": "string", "percentage": number}], "extra_incis": [{"inci": "string", "percentage": number}]}`,
             product_code: "Product Code",
             printing_date: "Printing Date",
@@ -896,7 +896,8 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                     const name = a.inci || a.name || "";
                     const normInci = normalizeIngredient(name);
                     if (normInci) {
-                        extractedMap.set(normInci, a.percentage !== undefined ? a.percentage : 0);
+                        const p = parseConcentration(a.percentage);
+                        extractedMap.set(normInci, p);
                     }
                 });
             }
@@ -919,12 +920,15 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             // Display extra INCI names (only if percentage > 0)
             if (result.extra_incis && Array.isArray(result.extra_incis)) {
                 const filtered = result.extra_incis.filter(a => {
-                    const p = parseFloat(String(a.percentage || 0).replace(',', '.'));
+                    const p = parseConcentration(a.percentage);
                     return p > 0;
                 });
 
                 if (filtered.length > 0) {
-                    allergenExtraIncisList.innerHTML = filtered.map(a => `<div>${a.inci || a.name || ''} (${a.percentage}%)</div>`).join('');
+                    allergenExtraIncisList.innerHTML = filtered.map(a => {
+                        const p = parseConcentration(a.percentage);
+                        return `<div>${a.inci || a.name || ''} (${p}%)</div>`;
+                    }).join('');
                     allergenExtraIncisContainer.classList.remove('hidden');
                 } else {
                     allergenExtraIncisContainer.classList.add('hidden');
@@ -1147,6 +1151,31 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     function normalizeIngredient(str) {
         // Remove non-alphanumeric characters and lowercase for better matching
         return str.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+    }
+
+    function parseConcentration(val) {
+        if (val === undefined || val === null) return 0;
+        if (typeof val === 'number') return val;
+        
+        let s = String(val).trim();
+        if (!s) return 0;
+
+        // Replace all commas with dots for parsing (global replacement)
+        s = s.replace(/,/g, '.');
+
+        // Check for ranges like "0.01 - 0.05", "0.01 to 0.05", "0.01-0.05", "0.01/0.05"
+        // Also matches "0.05 max" or similar if we wanted, but let's focus on ranges
+        const rangeMatch = s.match(/([\d.]+)\s*[-–—/to]+\s*([\d.]+)/i);
+        if (rangeMatch) {
+            const v1 = parseFloat(rangeMatch[1]);
+            const v2 = parseFloat(rangeMatch[2]);
+            if (!isNaN(v1) && !isNaN(v2)) {
+                return Math.max(v1, v2);
+            }
+        }
+
+        const p = parseFloat(s);
+        return isNaN(p) ? 0 : p;
     }
 
     // Text-only AI call: sends the document text inline in the prompt (no image attachment).
