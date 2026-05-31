@@ -269,7 +269,9 @@ body {
     color: var(--text-muted);
 }
 
-input[type="password"] {
+input[type="password"],
+input[type="text"],
+input[type="number"] {
     background: rgba(15, 23, 42, 0.6);
     border: 1px solid var(--border-color);
     color: var(--text-main);
@@ -281,7 +283,9 @@ input[type="password"] {
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-input[type="password"]:focus {
+input[type="password"]:focus,
+input[type="text"]:focus,
+input[type="number"]:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
@@ -964,106 +968,373 @@ input[type="password"]:focus {
 }
 
 /* Allergen Extractor Layout */
-.allergen-layout {
-    display: flex;
-    justify-content: center;
+/* Allergen Extractor Redesigned Layout */
+.allergen-container-new {
+    display: grid;
+    grid-template-columns: 380px 1fr;
     gap: 1.5rem;
-    height: calc(100vh - 280px);
-    min-height: 500px;
+    width: 100%;
+    align-items: stretch;
 }
 
-.allergen-left-panel {
-    width: 400px;
-    flex-shrink: 0;
+.allergen-left-col {
     display: flex;
     flex-direction: column;
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.allergen-top-panel {
+    padding: 1.5rem;
+}
+
+.allergen-top-panel-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    align-items: stretch;
+}
+
+.allergen-top-panel-inputs .input-group {
+    width: 100%;
+}
+
+.allergen-top-panel-inputs .input-group-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    user-select: none;
+    cursor: pointer;
+    padding: 0.25rem 0;
+}
+
+.allergen-top-panel-inputs .input-group-checkbox input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.allergen-top-panel-inputs .input-group-checkbox label {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-main);
+    cursor: pointer;
+}
+
+.allergen-results-panel {
+    padding: 1.5rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.results-header h2 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.results-toolbar {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.sorting-switch-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    user-select: none;
+    padding: 0.6rem 0.8rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+}
+
+.sorting-switch-container .switch-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.results-toolbar #download-allergen-pdf-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.results-summary {
+    margin-bottom: 1.25rem;
+    padding: 1rem;
+    background: rgba(30, 41, 59, 0.4);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.max-dose-info {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--accent);
+    line-height: 1.4;
+}
+
+.declared-allergens-section {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 0;
+}
+
+.declared-allergens-section h3 {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+
+.declared-allergens-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex-grow: 1;
+    min-height: 180px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.allergen-table-card {
+    padding: 0;
+    overflow: hidden;
+    height: calc(100vh - 240px);
+    min-height: 600px;
+    display: flex;
+    flex-direction: column;
+}
+
+.allergen-table-card .table-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 1rem 1rem 0;
+    background: transparent;
+    border: none;
     gap: 1rem;
 }
 
-.allergen-right-panel {
+.allergen-table-card .table-container {
+    padding: 1rem;
+    overflow: auto;
     flex-grow: 1;
-    max-width: 600px;
-    overflow: hidden;
 }
 
-.mini-uploader {
-    padding: 1rem !important;
-}
-
-.mini-uploader .upload-icon {
-    width: 32px;
-    height: 32px;
-    margin-bottom: 0.5rem;
-}
-
-.uploaded-files-section {
-    flex-grow: 1;
+.component-header-panel {
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    gap: 0.6rem;
+    min-width: 260px;
+    padding: 0.75rem;
+    background: rgba(30, 41, 59, 0.7);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-sizing: border-box;
+    text-align: left;
+    font-weight: normal;
+    color: var(--text-main);
 }
 
-.uploaded-files-list-container {
-    flex-grow: 1;
-    overflow-y: auto;
-    margin-top: 0.5rem;
-}
-
-.allergen-info-section {
+.component-header-top {
     display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-    min-height: 200px;
-}
-
-.allergen-file-header {
-    display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 0.75rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--border-color);
 }
 
-.file-name-display {
-    font-weight: 600;
-    font-size: 1rem;
-    color: var(--text-main);
-    word-break: break-all;
+.component-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--primary);
+    position: relative;
 }
 
-.allergen-metadata {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-.meta-row {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-}
-
-.meta-label {
-    font-weight: 500;
-    color: var(--accent);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-size: 0.75rem;
-}
-
-.meta-value {
-    color: var(--text-main);
-    font-weight: 500;
-    margin-left: 4px;
-}
-
-.empty-state-msg {
+.btn-delete-column {
+    background: none;
+    border: none;
+    color: var(--error);
+    font-size: 1.25rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 100%;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.btn-delete-column:hover {
+    background-color: rgba(239, 68, 68, 0.15);
+}
+
+.component-upload-zone {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+    justify-content: center;
+    min-height: 44px;
+    box-sizing: border-box;
+}
+
+.component-upload-zone.drag-active {
+    border-color: var(--primary);
+    background: rgba(59, 130, 246, 0.08);
+}
+
+.component-upload-btn {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.component-file-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-width: 0;
+}
+
+.component-filename {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     color: var(--text-muted);
-    font-style: italic;
+    font-size: 0.75rem;
+    max-width: 140px;
+}
+
+.component-reupload-btn {
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-size: 0.8rem;
+    cursor: pointer;
+    padding: 0 4px;
+}
+
+.component-field-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.component-field-row label {
+    width: 70px;
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.component-field-row input {
+    flex-grow: 1;
+    min-width: 0;
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.8rem !important;
+    border-radius: 6px !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+}
+
+.component-dose-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-grow: 1;
+}
+
+.component-dose-wrapper input {
+    width: 100%;
+}
+
+.component-extra-incis {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.extra-incis-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.extra-incis-list {
+    max-height: 60px;
+    overflow-y: auto;
+    font-size: 0.75rem;
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.2rem;
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 4px;
+}
+
+.extra-incis-list div {
+    white-space: normal;
+    word-break: break-all;
+}
+
+.component-add-th {
+    vertical-align: top;
+    padding-top: 1.5rem !important;
     text-align: center;
+}
+
+.btn-add-column {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    font-size: 1.5rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+    transition: all 0.2s;
+    margin: 0 auto;
+}
+
+.btn-add-column:hover {
+    background: var(--primary-hover);
+    transform: scale(1.05);
+    box-shadow: 0 6px 14px rgba(59, 130, 246, 0.4);
 }
 
 #copy-concentrations-btn {
@@ -1170,15 +1441,172 @@ input[type="password"]:focus {
     font-weight: 500;
 }
 
-@media (max-width: 1024px) {
-    .allergen-layout {
-        flex-direction: column;
+@media (max-width: 1200px) {
+    .allergen-container-new {
+        grid-template-columns: 1fr;
+    }
+    .allergen-left-col {
         height: auto;
-        align-items: center;
+        min-height: auto;
     }
-    
-    .allergen-left-panel, .allergen-right-panel {
-        width: 100%;
-        max-width: 600px;
+    .allergen-results-panel {
+        flex-grow: 0;
     }
+    .declared-allergens-section {
+        flex-grow: 0;
+    }
+    .declared-allergens-list {
+        max-height: 280px;
+    }
+    .allergen-top-panel-inputs {
+        flex-direction: row;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    }
+    .allergen-top-panel-inputs .input-group {
+        flex: 1;
+        min-width: 240px;
+    }
+    .allergen-top-panel-inputs .input-group-checkbox {
+        height: 42px;
+    }
+    .allergen-table-card {
+        height: auto;
+        min-height: 500px;
+    }
+}
+
+@media (max-width: 768px) {
+    .allergen-top-panel-inputs {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    .allergen-top-panel-inputs .input-group-checkbox {
+        height: auto;
+    }
+}
+
+/* Custom Switch Slider */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+
+.switch input { 
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.1);
+  transition: .3s;
+  border: 1px solid var(--border-color);
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 12px;
+  width: 12px;
+  left: 3px;
+  bottom: 3px;
+  background-color: var(--text-muted);
+  transition: .3s;
+}
+
+input:checked + .slider {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+input:checked + .slider:before {
+  transform: translateX(16px);
+  background-color: white;
+}
+
+.slider.round {
+  border-radius: 20px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+/* Declared Allergens List Elements */
+.declared-allergen-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.declared-allergen-item:hover {
+    background: rgba(30, 41, 59, 0.85);
+    border-color: var(--primary);
+    transform: translateX(2px);
+}
+
+.allergen-inci {
+    font-weight: 500;
+    color: var(--text-main);
+}
+
+.allergen-concentration-badge {
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    color: white;
+}
+
+.allergen-concentration-badge.high {
+    background: linear-gradient(135deg, #ef4444, #f97316); /* Red-Orange gradient for >= 1% */
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+}
+
+.allergen-concentration-badge.low {
+    background: rgba(59, 130, 246, 0.2); /* Muted blue for < 1% */
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    color: #60a5fa;
+}
+
+.no-allergens-msg {
+    text-align: center;
+    padding: 1.5rem;
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 0.9rem;
+    background: rgba(15, 23, 42, 0.2);
+    border: 1px dashed var(--border-color);
+    border-radius: 6px;
+}
+
+/* Required inputs style: subtle red border */
+#allergen-brand,
+#allergen-product-name,
+.component-dose-wrapper input[type="number"] {
+    border: 2px solid rgba(239, 68, 68, 0.4);
+}
+
+#allergen-brand:focus,
+#allergen-product-name:focus,
+.component-dose-wrapper input[type="number"]:focus {
+    border-color: rgba(239, 68, 68, 0.85);
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
 }

@@ -84,7 +84,15 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             concentrations_copied: "¡Copiado!",
             allergen_empty_msg: "Sube un PDF para ver los detalles",
             concentration_percent: "Concentración %",
-            extra_incis_title: "Otros INCI encontrados"
+            extra_incis_title: "Otros INCI encontrados",
+            brand_label: "Marca",
+            product_name_label: "Nombre del Producto",
+            rinse_off_label: "¿Producto para aclarado?",
+            dose_percent_label: "Dosis %",
+            delete_column_tooltip: "Eliminar este componente",
+            analysis_results_title: "Resultados del Análisis",
+            sort_below_one_label: "Ordenar < 1% alfabéticamente",
+            declared_allergens_heading: "Alérgenos a Declarar en Etiqueta"
         },
         en: {
             header_app_name: "LABEL REGULATORY",
@@ -170,15 +178,22 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             concentrations_copied: "Copied!",
             allergen_empty_msg: "Upload a PDF to see details",
             concentration_percent: "Concentration %",
-            extra_incis_title: "Other INCI names found"
-
+            extra_incis_title: "Other INCI names found",
+            brand_label: "Brand",
+            product_name_label: "Product Name",
+            rinse_off_label: "Rinse-off product?",
+            dose_percent_label: "Dose %",
+            delete_column_tooltip: "Delete this component",
+            analysis_results_title: "Analysis Results",
+            sort_below_one_label: "Sort < 1% alphabetically",
+            declared_allergens_heading: "Allergens to Declare on Label"
         }
     };
 
     window.switchTab = function(tabId) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        
+
         document.getElementById(`tab-${tabId}`).classList.remove('hidden');
         document.getElementById(`tab-btn-${tabId}`).classList.add('active');
 
@@ -232,24 +247,36 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     const providerName = document.getElementById('provider-name');
     const modelVersion = document.getElementById('model-version');
 
-    // Allergen Extractor Elements
-    const allergenDropZone = document.getElementById('allergen-drop-zone');
-    const allergenFileInput = document.getElementById('allergen-file-input');
-    const allergenInfoPanel = document.getElementById('allergen-info-panel');
-    const allergenFileInfoDisplay = document.getElementById('allergen-file-info-display');
-    const allergenEmptyState = document.getElementById('allergen-empty-state');
-    const allergenStatusIcon = document.getElementById('allergen-status-icon');
-    const allergenFilename = document.getElementById('allergen-current-filename');
-    const metaProductCode = document.getElementById('meta-product-code');
-    const metaPrintingDate = document.getElementById('meta-printing-date');
+    // Allergen Extractor Elements (Redesigned)
+    const allergenBrandInput = document.getElementById('allergen-brand');
+    const allergenProductNameInput = document.getElementById('allergen-product-name');
+    const allergenRinseOffInput = document.getElementById('allergen-rinse-off');
     const copyConcentrationsBtn = document.getElementById('copy-concentrations-btn');
     const allergenTableBody = document.getElementById('allergen-table-body');
     const allergenTableHeader = document.getElementById('allergen-table-header');
-    const allergenExtraIncisContainer = document.getElementById('allergen-extra-incis-container');
-    const allergenExtraIncisList = document.getElementById('allergen-extra-incis-list');
-    
-    let uploadedAllergenFiles = [];
-    let allergenDataMap = new Map(); // Map of INCI -> { columnKey -> percentage }
+    const allergenSortSwitch = document.getElementById('allergen-sort-switch');
+    const downloadAllergenPdfBtn = document.getElementById('download-allergen-pdf-btn');
+    const allergenMaxDoseInfo = document.getElementById('allergen-max-dose-info');
+    const declaredAllergensList = document.getElementById('declared-allergens-list');
+
+    // Allergen tab State
+    let allergenBrand = '';
+    let allergenProductName = '';
+    let allergenRinseOff = false;
+    let allergenSortAlphabeticalBelowOne = false;
+    let perfumeComponents = [
+        {
+            id: 'A',
+            title: 'COMPONENT A',
+            fileName: '',
+            dosePercent: 0,
+            productCode: '',
+            printingDate: '',
+            extraIncis: [],
+            concentrations: {},
+            isLoading: false
+        }
+    ];
 
 
 
@@ -257,7 +284,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         currentLanguage = lang;
         localStorage.setItem('preferredLanguage', lang);
         document.documentElement.lang = lang;
-        
+
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n');
             if (translations[lang][key]) {
@@ -280,6 +307,14 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             if (updatedLabelItems.length > 0 && typeof window.runValidation === 'function') {
                 window.runValidation(updatedLabelItems);
             }
+        }
+
+        // Re-run allergen compliance and render to update translations
+        if (typeof calculateAllergenCompliance === 'function') {
+            calculateAllergenCompliance();
+        }
+        if (typeof renderAllergenTable === 'function') {
+            renderAllergenTable();
         }
     };
 
@@ -333,7 +368,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             labelBackdrop.scrollTop = labelTextarea.scrollTop;
             labelBackdrop.scrollLeft = labelTextarea.scrollLeft;
         });
-        
+
         labelTextarea.addEventListener('input', (e) => {
             updateIngredientsBackdrop(e.target.value);
             const updatedLabelItems = e.target.value.split(',').map(s => s.trim()).filter(s => s.length > 0);
@@ -631,7 +666,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             roiScale = roiOriginalImg.width / width;
 
             roiCtx.drawImage(roiOriginalImg, 0, 0, width, height);
-            
+
             // Reset selection
             roiSelectedArea = null;
             roiSelectionBox.style.display = 'none';
@@ -644,7 +679,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         roiStartX = e.clientX - rect.left;
         roiStartY = e.clientY - rect.top;
         isDrawing = true;
-        
+
         roiSelectionBox.style.display = 'block';
         roiSelectionBox.style.left = `${roiStartX}px`;
         roiSelectionBox.style.top = `${roiStartY}px`;
@@ -654,21 +689,21 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
 
     window.addEventListener('mousemove', (e) => {
         if (!isDrawing) return;
-        
+
         const rect = roiCanvas.getBoundingClientRect();
         let currentX = Math.max(0, Math.min(e.clientX - rect.left, roiCanvas.width));
         let currentY = Math.max(0, Math.min(e.clientY - rect.top, roiCanvas.height));
-        
+
         const left = Math.min(roiStartX, currentX);
         const top = Math.min(roiStartY, currentY);
         const width = Math.abs(roiStartX - currentX);
         const height = Math.abs(roiStartY - currentY);
-        
+
         roiSelectionBox.style.left = `${left}px`;
         roiSelectionBox.style.top = `${top}px`;
         roiSelectionBox.style.width = `${width}px`;
         roiSelectionBox.style.height = `${height}px`;
-        
+
         roiSelectedArea = { left, top, width, height };
     });
 
@@ -684,10 +719,10 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             // Crop the image
             const cropCanvas = document.createElement('canvas');
             const cropCtx = cropCanvas.getContext('2d');
-            
+
             cropCanvas.width = roiSelectedArea.width * roiScale;
             cropCanvas.height = roiSelectedArea.height * roiScale;
-            
+
             cropCtx.drawImage(
                 roiOriginalImg,
                 roiSelectedArea.left * roiScale,
@@ -698,10 +733,10 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 cropCanvas.width,
                 cropCanvas.height
             );
-            
+
             labelBase64 = cropCanvas.toDataURL('image/jpeg', 0.9);
         }
-        
+
         roiModal.classList.add('hidden');
         validateState();
     });
@@ -739,7 +774,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             }
             const { text, pageCount } = await parsePdfText(file);
             templatePdfText = text;
-            
+
             // Check if text is sparse, if so we might need OCR later
             const isImageBased = text.trim().length < 150;
             if (isImageBased) {
@@ -778,15 +813,15 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             } else if (file.type.startsWith('image/')) {
                 base64 = await readImageToBase64(file);
             } else throw new Error(translations[currentLanguage].error_unsupported_label);
-            
+
             originalLabelBase64 = base64;
             labelImagePreview.src = base64;
             labelUploadContent.classList.add('hidden');
             labelPreviewContainer.classList.remove('hidden');
-            
+
             // Open ROI modal for the user to select ingredients area
             openROIModal(base64);
-            
+
             validateState();
         } catch (e) {
             alert(e.message);
@@ -796,174 +831,838 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         }
     });
 
-    // --- Allergen Extractor Logic ---
-    function initAllergenTable() {
-        if (typeof allergens === 'undefined') return;
-        allergenTableBody.innerHTML = '';
-        
-        // Ensure header has exactly two columns
-        allergenTableHeader.innerHTML = `
-            <th class="sticky-col">INCI</th>
-            <th data-i18n="concentration_percent">${translations[currentLanguage].concentration_percent || "Concentración %"}</th>
-        `;
+    // --- Redesigned Allergen Extractor Logic ---
 
-        allergens.forEach(item => {
+    // Bind top panel inputs
+    if (allergenBrandInput) {
+        allergenBrandInput.addEventListener('input', (e) => {
+            allergenBrand = e.target.value;
+            calculateAllergenCompliance();
+        });
+    }
+    if (allergenProductNameInput) {
+        allergenProductNameInput.addEventListener('input', (e) => {
+            allergenProductName = e.target.value;
+            calculateAllergenCompliance();
+        });
+    }
+    if (allergenRinseOffInput) {
+        allergenRinseOffInput.addEventListener('change', (e) => {
+            allergenRinseOff = e.target.checked;
+            calculateAllergenCompliance();
+        });
+    }
+    if (allergenSortSwitch) {
+        allergenSortSwitch.addEventListener('change', (e) => {
+            allergenSortAlphabeticalBelowOne = e.target.checked;
+            calculateAllergenCompliance();
+        });
+    }
+    if (downloadAllergenPdfBtn) {
+        downloadAllergenPdfBtn.addEventListener('click', () => {
+            generateAllergenPdfReport();
+        });
+    }
+
+    // Render function
+    function renderAllergenTable() {
+        if (typeof allergens === 'undefined') return;
+
+        // 1. Render Headers
+        allergenTableHeader.innerHTML = '';
+
+        // Sticky INCI header
+        const thInci = document.createElement('th');
+        thInci.className = 'sticky-col';
+        thInci.textContent = 'INCI';
+        allergenTableHeader.appendChild(thInci);
+
+        // Component headers
+        perfumeComponents.forEach((comp, idx) => {
+            const thComp = document.createElement('th');
+
+            // Build the card element
+            const card = document.createElement('div');
+            card.className = 'component-header-panel';
+
+            const topRow = document.createElement('div');
+            topRow.className = 'component-header-top';
+
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'component-title';
+            titleSpan.textContent = comp.title;
+            topRow.appendChild(titleSpan);
+
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'btn-copy-column';
+            copyBtn.style.background = 'none';
+            copyBtn.style.border = 'none';
+            copyBtn.style.cursor = 'pointer';
+            copyBtn.style.color = 'var(--text-muted)';
+            copyBtn.style.padding = '0 4px';
+            copyBtn.style.marginLeft = 'auto';
+            copyBtn.title = currentLanguage === 'es' ? 'Copiar esta columna' : 'Copy this column';
+            copyBtn.innerHTML = `
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+            `;
+            copyBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                copyComponentColumn(idx, copyBtn);
+            });
+            topRow.appendChild(copyBtn);
+
+            // Delete button (only for extra columns)
+            if (idx > 0) {
+                const delBtn = document.createElement('button');
+                delBtn.className = 'btn-delete-column';
+                delBtn.title = translations[currentLanguage].delete_column_tooltip || "Delete this component";
+                delBtn.innerHTML = '×';
+                delBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteComponentColumn(idx);
+                });
+                topRow.appendChild(delBtn);
+            }
+
+            card.appendChild(topRow);
+
+            // Upload zone
+            const uploadZone = document.createElement('div');
+            uploadZone.className = 'component-upload-zone';
+            uploadZone.id = `upload-zone-${comp.id}`;
+
+            if (comp.isLoading) {
+                uploadZone.innerHTML = '<span class="spinner-wheel"></span>';
+            } else if (comp.fileName) {
+                const fileInfoDiv = document.createElement('div');
+                fileInfoDiv.className = 'component-file-info';
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'component-filename';
+                nameSpan.textContent = comp.fileName;
+                nameSpan.title = comp.fileName;
+                fileInfoDiv.appendChild(nameSpan);
+
+                const reuploadBtn = document.createElement('button');
+                reuploadBtn.className = 'component-reupload-btn';
+                reuploadBtn.textContent = '🔄';
+                reuploadBtn.title = currentLanguage === 'es' ? 'Volver a subir' : 'Re-upload';
+                reuploadBtn.addEventListener('click', () => fileInput.click());
+                fileInfoDiv.appendChild(reuploadBtn);
+
+                uploadZone.appendChild(fileInfoDiv);
+            } else {
+                const uBtn = document.createElement('button');
+                uBtn.className = 'btn btn-primary btn-sm component-upload-btn';
+                uBtn.textContent = translations[currentLanguage].browse_files || 'Browse Files';
+                uBtn.addEventListener('click', () => fileInput.click());
+                uploadZone.appendChild(uBtn);
+            }
+
+            // Hidden file input for this specific component
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.pdf,application/pdf';
+            fileInput.style.display = 'none';
+            fileInput.addEventListener('change', async (e) => {
+                if (e.target.files.length > 0) {
+                    await processComponentPdf(e.target.files[0], idx);
+                }
+            });
+            thComp.appendChild(fileInput);
+
+            // Setup Drag and Drop
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('drag-active');
+            });
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('drag-active');
+            });
+            uploadZone.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('drag-active');
+                if (e.dataTransfer.files.length > 0) {
+                    const file = e.dataTransfer.files[0];
+                    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+                        await processComponentPdf(file, idx);
+                    } else {
+                        alert(translations[currentLanguage].error_pdf_only);
+                    }
+                }
+            });
+
+            card.appendChild(uploadZone);
+
+            // Dose % Row
+            const doseRow = document.createElement('div');
+            doseRow.className = 'component-field-row';
+            const doseLabel = document.createElement('label');
+            doseLabel.textContent = translations[currentLanguage].dose_percent_label || 'Dose %';
+            doseRow.appendChild(doseLabel);
+
+            const doseWrapper = document.createElement('div');
+            doseWrapper.className = 'component-dose-wrapper';
+            const doseInput = document.createElement('input');
+            doseInput.type = 'number';
+            doseInput.value = comp.dosePercent;
+            doseInput.min = '0';
+            doseInput.max = '100';
+            doseInput.step = 'any';
+            doseInput.addEventListener('input', (e) => {
+                comp.dosePercent = parseFloat(e.target.value) || 0;
+                calculateAllergenCompliance();
+            });
+            doseWrapper.appendChild(doseInput);
+            doseWrapper.appendChild(document.createTextNode('%'));
+            doseRow.appendChild(doseWrapper);
+
+            card.appendChild(doseRow);
+
+            // Product Code Row
+            const codeRow = document.createElement('div');
+            codeRow.className = 'component-field-row';
+            const codeLabel = document.createElement('label');
+            codeLabel.textContent = translations[currentLanguage].product_code || 'Code';
+            codeRow.appendChild(codeLabel);
+            const codeInput = document.createElement('input');
+            codeInput.type = 'text';
+            codeInput.value = comp.productCode;
+            codeInput.placeholder = '—';
+            codeInput.addEventListener('input', (e) => {
+                comp.productCode = e.target.value;
+                calculateAllergenCompliance();
+            });
+            codeRow.appendChild(codeInput);
+
+            card.appendChild(codeRow);
+
+            // Printing Date Row
+            const dateRow = document.createElement('div');
+            dateRow.className = 'component-field-row';
+            const dateLabel = document.createElement('label');
+            dateLabel.textContent = translations[currentLanguage].printing_date || 'Date';
+            dateRow.appendChild(dateLabel);
+            const dateInput = document.createElement('input');
+            dateInput.type = 'text';
+            dateInput.value = comp.printingDate;
+            dateInput.placeholder = '—';
+            dateInput.addEventListener('input', (e) => {
+                comp.printingDate = e.target.value;
+                calculateAllergenCompliance();
+            });
+            dateRow.appendChild(dateInput);
+
+            card.appendChild(dateRow);
+
+            // Other INCI names found
+            const extraIncisDiv = document.createElement('div');
+            extraIncisDiv.className = 'component-extra-incis';
+            const extraIncisLabel = document.createElement('span');
+            extraIncisLabel.className = 'extra-incis-label';
+            extraIncisLabel.textContent = translations[currentLanguage].extra_incis_title || 'Other INCIs';
+            extraIncisDiv.appendChild(extraIncisLabel);
+
+            const extraList = document.createElement('div');
+            extraList.className = 'extra-incis-list';
+            if (comp.extraIncis && comp.extraIncis.length > 0) {
+                comp.extraIncis.forEach(item => {
+                    const extraItem = document.createElement('div');
+                    extraItem.textContent = `${item.inci || item.name} (${item.percentage}%)`;
+                    extraList.appendChild(extraItem);
+                });
+            } else {
+                extraList.innerHTML = '<div style="color: var(--text-muted); font-style: italic;">None</div>';
+            }
+            extraIncisDiv.appendChild(extraList);
+
+            card.appendChild(extraIncisDiv);
+
+            thComp.appendChild(card);
+            allergenTableHeader.appendChild(thComp);
+        });
+
+        // Plus Column header
+        const thAdd = document.createElement('th');
+        thAdd.className = 'component-add-th';
+        const addBtn = document.createElement('button');
+        addBtn.className = 'btn-add-column';
+        addBtn.textContent = '+';
+        addBtn.title = currentLanguage === 'es' ? 'Añadir componente' : 'Add component';
+        addBtn.addEventListener('click', addComponentColumn);
+        thAdd.appendChild(addBtn);
+        allergenTableHeader.appendChild(thAdd);
+
+        // 2. Render Body Rows
+        allergenTableBody.innerHTML = '';
+        allergens.forEach((item, rowIdx) => {
             const row = document.createElement('tr');
+
+            // INCI name (sticky col)
             const tdInci = document.createElement('td');
             tdInci.className = 'sticky-col';
             tdInci.textContent = item.INCI;
             row.appendChild(tdInci);
 
-            const tdValue = document.createElement('td');
-            tdValue.className = 'concentration-value';
-            tdValue.setAttribute('contenteditable', 'true');
-            tdValue.textContent = '0';
-            row.appendChild(tdValue);
+            // Concentrations for each component
+            perfumeComponents.forEach((comp) => {
+                const tdVal = document.createElement('td');
+                tdVal.className = 'concentration-value';
+                tdVal.setAttribute('contenteditable', 'true');
+
+                const normInci = normalizeIngredient(item.INCI);
+                const currentVal = comp.concentrations[normInci] !== undefined ? comp.concentrations[normInci] : 0;
+                tdVal.textContent = currentVal;
+
+                // Track edits on blur so we don't lose focus while typing
+                tdVal.addEventListener('blur', (e) => {
+                    const val = parseConcentration(e.target.textContent);
+                    comp.concentrations[normInci] = val;
+                    e.target.textContent = val;
+                    calculateAllergenCompliance();
+                });
+
+                row.appendChild(tdVal);
+            });
+
+            // Add spacer cell at the end corresponding to the plus column
+            const tdAddSpacer = document.createElement('td');
+            row.appendChild(tdAddSpacer);
 
             allergenTableBody.appendChild(row);
         });
+
+        // Run compliance calculations
+        calculateAllergenCompliance();
     }
 
+    function calculateAllergenCompliance() {
+        if (typeof allergens === 'undefined') return;
 
-    initAllergenTable();
+        const threshold = allergenRinseOff ? 0.01 : 0.001;
+        let totalPerfumeDose = 0;
+        perfumeComponents.forEach(comp => {
+            totalPerfumeDose += (comp.dosePercent || 0);
+        });
 
-    setupDropZone(allergenDropZone, allergenFileInput, async (file) => {
-        try {
-            if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-                throw new Error(translations[currentLanguage].error_pdf_only);
+        const productAllergens = [];
+
+        allergens.forEach(item => {
+            const normInci = normalizeIngredient(item.INCI);
+            let productConc = 0;
+
+            perfumeComponents.forEach(comp => {
+                const compConc = comp.concentrations[normInci] !== undefined ? comp.concentrations[normInci] : 0;
+                productConc += compConc * ((comp.dosePercent || 0) / 100);
+            });
+
+            if (productConc > threshold) {
+                productAllergens.push({
+                    inci: item.INCI,
+                    concentration: productConc
+                });
             }
-            await processAllergenPdf(file);
-        } catch (e) {
-            alert(e.message);
-        }
-    });
+        });
 
-    async function processAllergenPdf(file) {
+        // Sort high >= 1% and low < 1%
+        const highConc = productAllergens.filter(a => a.concentration >= 1.0);
+        const lowConc = productAllergens.filter(a => a.concentration < 1.0);
+
+        highConc.sort((a, b) => b.concentration - a.concentration);
+
+        if (allergenSortAlphabeticalBelowOne) {
+            lowConc.sort((a, b) => a.inci.localeCompare(b.inci));
+        } else {
+            lowConc.sort((a, b) => b.concentration - a.concentration);
+        }
+
+        const declaredList = [...highConc, ...lowConc];
+
+        if (declaredAllergensList) {
+            declaredAllergensList.innerHTML = '';
+            if (declaredList.length === 0) {
+                const emptyMsg = document.createElement('div');
+                emptyMsg.className = 'no-allergens-msg';
+                emptyMsg.textContent = currentLanguage === 'es' ? 'No hay alérgenos que declarar' : 'No allergens to declare';
+                declaredAllergensList.appendChild(emptyMsg);
+            } else {
+                declaredList.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'declared-allergen-item';
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'allergen-inci';
+                    nameSpan.textContent = item.inci;
+
+                    const badgeSpan = document.createElement('span');
+                    const isHigh = item.concentration >= 1.0;
+                    badgeSpan.className = `allergen-concentration-badge ${isHigh ? 'high' : 'low'}`;
+                    badgeSpan.textContent = item.concentration.toFixed(4).replace(/\.?0+$/, '') + '%';
+
+                    itemDiv.appendChild(nameSpan);
+                    itemDiv.appendChild(badgeSpan);
+                    declaredAllergensList.appendChild(itemDiv);
+                });
+            }
+        }
+
+        // Calculate max safe perfume dosage before any single allergen triggers labeling.
+        let maxPerfumeDosage = null;
+        if (totalPerfumeDose > 0) {
+            let minLimit = Infinity;
+            allergens.forEach(item => {
+                const normInci = normalizeIngredient(item.INCI);
+                let productConc = 0;
+                perfumeComponents.forEach(comp => {
+                    const compConc = comp.concentrations[normInci] !== undefined ? comp.concentrations[normInci] : 0;
+                    productConc += compConc * ((comp.dosePercent || 0) / 100);
+                });
+
+                if (productConc > 0) {
+                    const limit = (threshold * totalPerfumeDose) / productConc;
+                    if (limit < minLimit) {
+                        minLimit = limit;
+                    }
+                }
+            });
+            if (minLimit !== Infinity) {
+                maxPerfumeDosage = minLimit;
+            }
+        }
+
+        if (allergenMaxDoseInfo) {
+            if (maxPerfumeDosage === null) {
+                const text = currentLanguage === 'es'
+                    ? 'Dosis máxima de perfume permitida en producto antes de que sea obligatorio declarar alérgenos: <strong>Sin límite</strong>'
+                    : 'Maximum perfume dosage allowed in the product before any single allergen triggers labeling: <strong>No limit</strong>';
+                allergenMaxDoseInfo.innerHTML = text;
+            } else {
+                const formattedDose = maxPerfumeDosage.toFixed(4).replace(/\.?0+$/, '') + '%';
+                const text = currentLanguage === 'es'
+                    ? `Dosis máxima de perfume permitida en producto antes de que sea obligatorio declarar alérgenos: <strong>${formattedDose}</strong>`
+                    : `Maximum perfume dosage allowed in the product before any single allergen triggers labeling: <strong>${formattedDose}</strong>`;
+                allergenMaxDoseInfo.innerHTML = text;
+            }
+        }
+    }
+
+    function generateAllergenPdfReport() {
+        var jsPDFClass = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+        if (!jsPDFClass) {
+            alert(translations[currentLanguage].error_pdf_lib || "PDF library not loaded");
+            return;
+        }
+
+        var doc = new jsPDFClass({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        var pageW = doc.internal.pageSize.getWidth();
+        var pageH = doc.internal.pageSize.getHeight();
+        var margin = 15;
+        var contentW = pageW - margin * 2;
+        var y = margin;
+
+        function checkPage(needed) {
+            if (y + needed > pageH - margin) {
+                doc.addPage();
+                y = margin;
+            }
+        }
+
+        // --- Document Title ---
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(18);
+        doc.setTextColor(59, 130, 246); // Primary accent
+        const mainTitle = currentLanguage === 'es' ? 'INFORME DE ALÉRGENOS' : 'ALLERGEN COMPLIANCE REPORT';
+        doc.text(mainTitle, pageW / 2, y + 7, { align: 'center' });
+        y += 12;
+
+        // --- Subtitle (Generated Date) ---
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        const dateText = (currentLanguage === 'es' ? 'Generado el ' : 'Generated on ') + new Date().toLocaleString(currentLanguage === 'es' ? 'es-ES' : 'en-US');
+        doc.text(dateText, pageW / 2, y, { align: 'center' });
+        y += 8;
+
+        // Separator line
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.3);
+        doc.line(margin, y, pageW - margin, y);
+        y += 8;
+
+        // --- Product / Brand Metadata ---
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(30, 41, 59);
+        doc.text(currentLanguage === 'es' ? 'Datos del Producto' : 'Product Information', margin, y);
+        y += 6;
+
+        doc.setFontSize(9);
+        // Brand
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(100, 116, 139);
+        doc.text((currentLanguage === 'es' ? 'Marca:' : 'Brand:'), margin, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(30, 41, 59);
+        doc.text(allergenBrand || '—', margin + 35, y);
+        y += 6;
+
+        // Product Name
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(100, 116, 139);
+        doc.text((currentLanguage === 'es' ? 'Nombre del Producto:' : 'Product Name:'), margin, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(30, 41, 59);
+        doc.text(allergenProductName || '—', margin + 35, y);
+        y += 6;
+
+        // Product Type
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(100, 116, 139);
+        doc.text((currentLanguage === 'es' ? 'Tipo de Producto:' : 'Product Type:'), margin, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(30, 41, 59);
+        const typeText = allergenRinseOff
+            ? (currentLanguage === 'es' ? 'Con aclarado (Rinse-off)' : 'Rinse-off')
+            : (currentLanguage === 'es' ? 'Sin aclarado (Leave-on)' : 'Leave-on');
+        doc.text(typeText, margin + 35, y);
+        y += 10;
+
+        doc.setDrawColor(226, 232, 240);
+        doc.line(margin, y, pageW - margin, y);
+        y += 8;
+
+        // --- Fragrance Components Table ---
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(30, 41, 59);
+        doc.text(currentLanguage === 'es' ? 'Composición de la Fragancia' : 'Fragrance Components', margin, y);
+        y += 6;
+
+        // Table Header
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margin, y, contentW, 7, 'F');
+        doc.setDrawColor(226, 232, 240);
+        doc.line(margin, y, pageW - margin, y);
+        doc.line(margin, y + 7, pageW - margin, y + 7);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(100, 116, 139);
+
+        doc.text(currentLanguage === 'es' ? 'Componente' : 'Component', margin + 2, y + 5);
+        doc.text(currentLanguage === 'es' ? 'Código de Producto' : 'Product Code', margin + 45, y + 5);
+        doc.text(currentLanguage === 'es' ? 'Fecha Impresión' : 'Printing Date', margin + 95, y + 5);
+        doc.text(currentLanguage === 'es' ? 'Dosis en Producto' : 'Dose in Product', margin + 140, y + 5);
+
+        y += 7;
+
+        let totalDose = 0;
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(51, 65, 85);
+
+        perfumeComponents.forEach(comp => {
+            checkPage(12);
+            totalDose += (comp.dosePercent || 0);
+
+            doc.text(comp.title || '—', margin + 2, y + 5);
+            doc.text(comp.productCode || '—', margin + 45, y + 5);
+            doc.text(comp.printingDate || '—', margin + 95, y + 5);
+            doc.text((comp.dosePercent || 0).toFixed(4).replace(/\.?0+$/, '') + '%', margin + 140, y + 5);
+
+            y += 7;
+            doc.line(margin, y, pageW - margin, y);
+        });
+
+        // Add Total Row
+        checkPage(10);
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margin, y, contentW, 7, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.text(currentLanguage === 'es' ? 'DOSIS TOTAL DE PERFUME' : 'TOTAL PERFUME DOSAGE', margin + 2, y + 5);
+        doc.text(totalDose.toFixed(4).replace(/\.?0+$/, '') + '%', margin + 140, y + 5);
+        y += 7;
+        doc.line(margin, y, pageW - margin, y);
+        y += 10;
+
+        // --- Compliance Summary ---
+        checkPage(30);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(30, 41, 59);
+        doc.text(currentLanguage === 'es' ? 'Resumen de Cumplimiento' : 'Compliance Summary', margin, y);
+        y += 6;
+
+        const threshold = allergenRinseOff ? 0.01 : 0.001;
+
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margin, y, contentW, 20, 'F');
+        doc.setDrawColor(226, 232, 240);
+        doc.rect(margin, y, contentW, 20, 'D');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(currentLanguage === 'es' ? 'Límite de Declaración Aplicado:' : 'Declaration Limit Applied:', margin + 4, y + 6);
+        doc.text(currentLanguage === 'es' ? 'Dosis Máxima de Perfume Permitida sin declaración de alérgenos:' : 'Max Allowed Perfume Dosage before labeling allergens:', margin + 4, y + 14);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(30, 41, 59);
+        doc.text(threshold + '%', margin + 52, y + 6);
+
+        // Max safe dose calculations
+        let maxPerfumeDosage = null;
+        if (totalDose > 0) {
+            let minLimit = Infinity;
+            allergens.forEach(item => {
+                const normInci = normalizeIngredient(item.INCI);
+                let productConc = 0;
+                perfumeComponents.forEach(comp => {
+                    const compConc = comp.concentrations[normInci] !== undefined ? comp.concentrations[normInci] : 0;
+                    productConc += compConc * ((comp.dosePercent || 0) / 100);
+                });
+
+                if (productConc > 0) {
+                    const limit = (threshold * totalDose) / productConc;
+                    if (limit < minLimit) {
+                        minLimit = limit;
+                    }
+                }
+            });
+            if (minLimit !== Infinity) {
+                maxPerfumeDosage = minLimit;
+            }
+        }
+
+        const maxDoseFormatted = maxPerfumeDosage === null
+            ? (currentLanguage === 'es' ? 'Sin límite' : 'No limit')
+            : maxPerfumeDosage.toFixed(4).replace(/\.?0+$/, '') + '%';
+
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(59, 130, 246); // Primary accent
+        doc.text(maxDoseFormatted, margin + 100, y + 14);
+        y += 26;
+
+        // --- Declared Allergens Table ---
+        checkPage(20);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(30, 41, 59);
+        doc.text(currentLanguage === 'es' ? 'Alérgenos a Declarar en Etiqueta' : 'Allergens to Declare on Label', margin, y);
+        y += 6;
+
+        const productAllergens = [];
+        allergens.forEach(item => {
+            const normInci = normalizeIngredient(item.INCI);
+            let productConc = 0;
+            perfumeComponents.forEach(comp => {
+                const compConc = comp.concentrations[normInci] !== undefined ? comp.concentrations[normInci] : 0;
+                productConc += compConc * ((comp.dosePercent || 0) / 100);
+            });
+            if (productConc > threshold) {
+                productAllergens.push({
+                    inci: item.INCI,
+                    concentration: productConc
+                });
+            }
+        });
+
+        const highConc = productAllergens.filter(a => a.concentration >= 1.0);
+        const lowConc = productAllergens.filter(a => a.concentration < 1.0);
+        highConc.sort((a, b) => b.concentration - a.concentration);
+        if (allergenSortAlphabeticalBelowOne) {
+            lowConc.sort((a, b) => a.inci.localeCompare(b.inci));
+        } else {
+            lowConc.sort((a, b) => b.concentration - a.concentration);
+        }
+        const declaredList = [...highConc, ...lowConc];
+
+        if (declaredList.length === 0) {
+            doc.setFillColor(240, 253, 244); // light green bg
+            doc.setDrawColor(187, 247, 208); // light green border
+            doc.rect(margin, y, contentW, 10, 'FD');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(22, 101, 52); // green text
+            doc.text(currentLanguage === 'es' ? 'No hay alérgenos que declarar en la etiqueta.' : 'No allergens to declare on the label.', margin + 4, y + 6.5);
+            y += 15;
+        } else {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9.5);
+            doc.setTextColor(51, 65, 85);
+
+            const allergensString = declaredList.map(item => item.inci).join(', ');
+            const splitAllergens = doc.splitTextToSize(allergensString, contentW - 10);
+
+            const lineHeight = 5;
+            const neededHeight = splitAllergens.length * lineHeight + 8; // add padding
+
+            checkPage(neededHeight);
+
+            // Draw a subtle box around the list
+            doc.setFillColor(248, 250, 252);
+            doc.setDrawColor(226, 232, 240);
+            doc.rect(margin, y, contentW, neededHeight, 'FD');
+
+            doc.text(splitAllergens, margin + 5, y + 6);
+            y += neededHeight + 5;
+        }
+
+        const filename = (allergenProductName || 'allergen').toLowerCase().replace(/[^a-z0-9]/g, '-') + '-analysis-report.pdf';
+        doc.save(filename);
+    }
+
+    // Helper functions
+    function addComponentColumn() {
+        const nextId = String.fromCharCode(65 + perfumeComponents.length); // A, B, C...
+        perfumeComponents.push({
+            id: nextId,
+            title: `COMPONENT ${nextId}`,
+            fileName: '',
+            dosePercent: 0,
+            productCode: '',
+            printingDate: '',
+            extraIncis: [],
+            concentrations: {},
+            isLoading: false
+        });
+        renderAllergenTable();
+    }
+
+    function deleteComponentColumn(idx) {
+        if (idx === 0) return; // Cannot delete first column
+        perfumeComponents.splice(idx, 1);
+
+        // Re-index titles (COMPONENT A, B, C...)
+        perfumeComponents.forEach((comp, i) => {
+            const id = String.fromCharCode(65 + i);
+            comp.id = id;
+            comp.title = `COMPONENT ${id}`;
+        });
+
+        renderAllergenTable();
+    }
+
+    async function processComponentPdf(file, componentIndex) {
         const apiKey = apiKeyInput.value.trim();
         if (!apiKey) {
             alert(translations[currentLanguage].api_key_label || "Please enter an API Key first.");
             return;
         }
 
-        // Reset UI for new file
-        allergenEmptyState.classList.add('hidden');
-        allergenFileInfoDisplay.classList.remove('hidden');
-        allergenStatusIcon.innerHTML = '<span class="spinner-wheel"></span>';
-        allergenFilename.textContent = file.name;
-        metaProductCode.textContent = '...';
-        metaPrintingDate.textContent = '...';
-        allergenExtraIncisContainer.classList.add('hidden');
-        allergenExtraIncisList.innerHTML = '';
-        
-        // Reset table values
-        const valueCells = allergenTableBody.querySelectorAll('.concentration-value');
-        valueCells.forEach(cell => cell.textContent = '0');
+        const comp = perfumeComponents[componentIndex];
+        comp.isLoading = true;
+        comp.fileName = file.name;
+        renderAllergenTable();
 
         try {
             const { text } = await parsePdfText(file);
             const inciList = (typeof allergens !== 'undefined') ? allergens.map(a => a.INCI).join(', ') : '';
             const prompt = translations[currentLanguage].allergen_prompt.replace('{inci_list}', inciList);
-            
+
             let resultText;
             if (text.trim().length > 150) {
-                // Sufficient text, use text-based extraction
                 resultText = await fetchAiTextExtraction(apiKey, text, prompt);
             } else {
-                // Scanned PDF or very little text, use vision-based extraction (OCR)
-                console.log("PDF has very little text, switching to Vision/OCR mode...");
                 const images = await renderPdfToImages(file);
                 resultText = await fetchAiExtraction(apiKey, images, prompt);
             }
 
-            // Clean raw text
             resultText = resultText.replace(/\*/g, '');
-
             const result = extractJsonSafely(resultText);
-            
-            console.log("Allergen Extraction Result:", result);
 
-            const productCode = result.product_code || '—';
-            const rawDate = result.printing_date || '—';
-            const printingDate = rawDate.replace(/\./g, '-');
-            
-            metaProductCode.textContent = productCode;
-            metaPrintingDate.textContent = printingDate;
-            
-            // Map extracted allergens
-            const extractedMap = new Map();
+            console.log(`AI Result for Component ${comp.id}:`, result);
+
+            comp.productCode = result.product_code || '';
+            const rawDate = result.printing_date || '';
+            comp.printingDate = rawDate.replace(/\./g, '-');
+
+            // Store concentrations
+            comp.concentrations = {};
             if (result.allergens && Array.isArray(result.allergens)) {
                 result.allergens.forEach(a => {
                     const name = a.inci || a.name || "";
                     const normInci = normalizeIngredient(name);
                     if (normInci) {
                         const p = parseConcentration(a.percentage);
-                        extractedMap.set(normInci, p);
+                        comp.concentrations[normInci] = p;
                     }
                 });
             }
 
-            // Update table rows
-            const rows = allergenTableBody.querySelectorAll('tr');
-            rows.forEach((row, index) => {
-                const item = allergens[index];
-                if (!item) return;
-
-                const normInci = normalizeIngredient(item.INCI);
-                const percentage = extractedMap.has(normInci) ? extractedMap.get(normInci) : 0;
-                
-                const valueCell = row.querySelector('.concentration-value');
-                if (valueCell) {
-                    valueCell.textContent = percentage;
-                }
-            });
-            
-            // Display extra INCI names (only if percentage > 0)
+            // Store extra INCIs
+            comp.extraIncis = [];
             if (result.extra_incis && Array.isArray(result.extra_incis)) {
-                const filtered = result.extra_incis.filter(a => {
+                comp.extraIncis = result.extra_incis.filter(a => {
                     const p = parseConcentration(a.percentage);
                     return p > 0;
+                }).map(a => {
+                    return {
+                        inci: a.inci || a.name || '',
+                        percentage: parseConcentration(a.percentage)
+                    };
                 });
-
-                if (filtered.length > 0) {
-                    allergenExtraIncisList.innerHTML = filtered.map(a => {
-                        const p = parseConcentration(a.percentage);
-                        return `<div>${a.inci || a.name || ''} (${p}%)</div>`;
-                    }).join('');
-                    allergenExtraIncisContainer.classList.remove('hidden');
-                } else {
-                    allergenExtraIncisContainer.classList.add('hidden');
-                }
-            } else {
-                allergenExtraIncisContainer.classList.add('hidden');
             }
 
-            allergenStatusIcon.innerHTML = '✅';
         } catch (e) {
-            allergenStatusIcon.innerHTML = '❌';
-            console.error("Allergen Processing Error:", e);
+            console.error("AI Error:", e);
             alert("Error processing PDF: " + e.message);
+        } finally {
+            comp.isLoading = false;
+            renderAllergenTable();
         }
     }
 
+    function copyComponentColumn(idx, buttonEl) {
+        const comp = perfumeComponents[idx];
+        const identifier = `${comp.productCode}_${comp.printingDate}`;
+        const values = allergens.map(item => {
+            const normInci = normalizeIngredient(item.INCI);
+            const val = comp.concentrations[normInci] !== undefined ? comp.concentrations[normInci] : 0;
+            return String(val).replace(/\./g, ',');
+        });
+        const clipboardText = [identifier, ...values].join('\t');
+
+        navigator.clipboard.writeText(clipboardText).then(() => {
+            const tooltip = buttonEl.querySelector('svg');
+            const originalColor = buttonEl.style.color;
+            buttonEl.style.color = 'var(--success)';
+            setTimeout(() => {
+                buttonEl.style.color = originalColor;
+            }, 1500);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            alert("Failed to copy to clipboard");
+        });
+    }
+
+    // Call dynamic render on start
+    renderAllergenTable();
+
     if (copyConcentrationsBtn) {
         copyConcentrationsBtn.addEventListener('click', () => {
-            const productCode = metaProductCode.textContent.trim();
-            const printingDate = metaPrintingDate.textContent.trim();
-            const identifier = `${productCode}_${printingDate}`;
+            // Copy all columns as a tab-separated spreadsheet format
+            const headerRow = ['INCI', ...perfumeComponents.map(c => `${c.title} (${c.productCode || '—'} - ${c.printingDate || '—'})`)];
+            const rows = allergens.map(item => {
+                const normInci = normalizeIngredient(item.INCI);
+                const values = perfumeComponents.map(c => {
+                    const val = c.concentrations[normInci] !== undefined ? c.concentrations[normInci] : 0;
+                    return String(val).replace(/\./g, ',');
+                });
+                return [item.INCI, ...values];
+            });
 
-            const valueCells = allergenTableBody.querySelectorAll('.concentration-value');
-            const values = Array.from(valueCells).map(cell => cell.textContent.trim().replace(/\./g, ',')); 
-            
-            const clipboardText = [identifier, ...values].join('\t');
-            
+            const clipboardText = [headerRow, ...rows].map(r => r.join('\t')).join('\n');
+
             navigator.clipboard.writeText(clipboardText).then(() => {
                 const originalText = copyConcentrationsBtn.querySelector('[data-i18n]').textContent;
                 const successText = translations[currentLanguage].concentrations_copied || "Copied!";
-                
                 const span = copyConcentrationsBtn.querySelector('[data-i18n]');
+
                 span.textContent = successText;
                 copyConcentrationsBtn.classList.add('success');
-                
+
                 setTimeout(() => {
                     span.textContent = originalText;
                     copyConcentrationsBtn.classList.remove('success');
@@ -1012,7 +1711,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         const pageCount = Math.min(pdf.numPages, maxPages);
-        
+
         if (pageCount === 1) {
             const page = await pdf.getPage(1);
             const viewport = page.getViewport({ scale: 2.0 });
@@ -1027,7 +1726,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             const pageData = [];
             let totalHeight = 0;
             let maxWidth = 0;
-            
+
             for (let i = 1; i <= pageCount; i++) {
                 const page = await pdf.getPage(i);
                 const viewport = page.getViewport({ scale: 1.5 }); // Slightly lower scale for multi-page to avoid memory issues
@@ -1035,12 +1734,12 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 totalHeight += viewport.height;
                 maxWidth = Math.max(maxWidth, viewport.width);
             }
-            
+
             const canvas = document.createElement('canvas');
             canvas.width = maxWidth;
             canvas.height = totalHeight;
             const ctx = canvas.getContext('2d');
-            
+
             let currentY = 0;
             for (const item of pageData) {
                 const pageCanvas = document.createElement('canvas');
@@ -1048,7 +1747,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 pageCanvas.height = item.viewport.height;
                 const pageCtx = pageCanvas.getContext('2d');
                 await item.page.render({ canvasContext: pageCtx, viewport: item.viewport }).promise;
-                
+
                 ctx.drawImage(pageCanvas, (maxWidth - item.viewport.width) / 2, currentY);
                 currentY += item.viewport.height;
             }
@@ -1061,7 +1760,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         const pageCount = Math.min(pdf.numPages, maxPages);
         const images = [];
-        
+
         for (let i = 1; i <= pageCount; i++) {
             const page = await pdf.getPage(i);
             const viewport = page.getViewport({ scale: 2.0 });
@@ -1156,7 +1855,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     function parseConcentration(val) {
         if (val === undefined || val === null) return 0;
         if (typeof val === 'number') return val;
-        
+
         let s = String(val).trim();
         if (!s) return 0;
 
@@ -1289,7 +1988,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             aiModel = 'mistral-ocr-2512';
         } else if (!apiKey.startsWith('sk-or-v1-')) {
             apiUrl = 'https://api.openai.com/v1/chat/completions';
-            aiModel = 'gpt-4o-mini'; 
+            aiModel = 'gpt-4o-mini';
         }
 
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -1309,7 +2008,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                                 img.src = src;
                             });
                         }));
-                        
+
                         canvas.width = Math.max(...loadedImages.map(img => img.width));
                         canvas.height = loadedImages.reduce((sum, img) => sum + img.height, 0);
                         let currentY = 0;
@@ -1532,7 +2231,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             } else {
                 console.log("Template is image-based, using Vision/OCR...");
                 // Note: file is not directly available here, so we'd need to have pre-rendered or pass it.
-                // However, since we're in the click handler and we only have templatePdfText, 
+                // However, since we're in the click handler and we only have templatePdfText,
                 // we should have rendered it during upload.
                 // Let's assume for now we use the text-based one OR we should have stored images.
                 // To be robust, let's look for where we handle template upload.
@@ -1544,7 +2243,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                     templateResponseText = await fetchAiTextExtraction(apiKey, templatePdfText, templatePrompt);
                 }
             }
-            
+
             let labelResponseText = await fetchAiExtraction(apiKey, labelBase64, labelPrompt);
 
             // Clean asterisks globally from the raw text
@@ -1766,17 +2465,17 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         var colW = 65;
         var tColX = margin + 12;
         var lColX = pageW - margin - colW;
-        
+
         // Headers for columns
         doc.setFontSize(9);
         doc.setTextColor(100, 116, 139);
         doc.text(translations[currentLanguage].template_col_header.toUpperCase(), tColX + colW/2, y, { align: 'center' });
         doc.text(translations[currentLanguage].label_col_header.toUpperCase(), lColX + colW/2, y, { align: 'center' });
-        
+
         doc.setFontSize(6.5);
         doc.text(translations[currentLanguage].pdf_concentration, tColX - 6, y - 1.5, { align: 'center' });
         doc.text(translations[currentLanguage].pdf_range, tColX - 6, y + 1.5, { align: 'center' });
-        
+
         y += 6;
 
         var tPositions = {};
@@ -1813,7 +2512,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             var statusColor = [148, 163, 184]; // default
             if (t.status === 'matched') statusColor = [16, 185, 129];
             else if (t.status === 'missing') statusColor = [245, 158, 11];
-            
+
             doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
             doc.rect(tColX, itemY, 1.5, diagBoxH, 'F');
 
@@ -1875,10 +2574,10 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                         var color = (l.status === 'misordered') ? [59, 130, 246] : [16, 185, 129];
                         doc.setDrawColor(color[0], color[1], color[2]);
                         doc.setLineWidth(0.3);
-                        
+
                         // Draw line
                         doc.line(startX, startY, endX, endY);
-                        
+
                         // Draw arrow head
                         var headSize = 1.2;
                         var angle = Math.atan2(endY - startY, endX - startX);
@@ -2019,7 +2718,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 if (mutation.type === 'attributes') {
                     const { attributeName } = mutation;
                     const classList = target.classList;
-                    
+
                     // Check for Google Translate classes or lang attribute changes
                     const isGoogleTranslated = classList.contains('translated-ltr') || classList.contains('translated-rtl');
                     const isLangChanged = attributeName === 'lang' && target.getAttribute('lang') !== currentLanguage;
