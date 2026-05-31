@@ -193,7 +193,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     window.switchTab = function(tabId) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        
+
         document.getElementById(`tab-${tabId}`).classList.remove('hidden');
         document.getElementById(`tab-btn-${tabId}`).classList.add('active');
 
@@ -258,7 +258,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     const downloadAllergenPdfBtn = document.getElementById('download-allergen-pdf-btn');
     const allergenMaxDoseInfo = document.getElementById('allergen-max-dose-info');
     const declaredAllergensList = document.getElementById('declared-allergens-list');
-    
+
     // Allergen tab State
     let allergenBrand = '';
     let allergenProductName = '';
@@ -284,7 +284,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         currentLanguage = lang;
         localStorage.setItem('preferredLanguage', lang);
         document.documentElement.lang = lang;
-        
+
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n');
             if (translations[lang][key]) {
@@ -368,7 +368,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             labelBackdrop.scrollTop = labelTextarea.scrollTop;
             labelBackdrop.scrollLeft = labelTextarea.scrollLeft;
         });
-        
+
         labelTextarea.addEventListener('input', (e) => {
             updateIngredientsBackdrop(e.target.value);
             const updatedLabelItems = e.target.value.split(',').map(s => s.trim()).filter(s => s.length > 0);
@@ -666,7 +666,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             roiScale = roiOriginalImg.width / width;
 
             roiCtx.drawImage(roiOriginalImg, 0, 0, width, height);
-            
+
             // Reset selection
             roiSelectedArea = null;
             roiSelectionBox.style.display = 'none';
@@ -679,7 +679,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         roiStartX = e.clientX - rect.left;
         roiStartY = e.clientY - rect.top;
         isDrawing = true;
-        
+
         roiSelectionBox.style.display = 'block';
         roiSelectionBox.style.left = `${roiStartX}px`;
         roiSelectionBox.style.top = `${roiStartY}px`;
@@ -689,21 +689,21 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
 
     window.addEventListener('mousemove', (e) => {
         if (!isDrawing) return;
-        
+
         const rect = roiCanvas.getBoundingClientRect();
         let currentX = Math.max(0, Math.min(e.clientX - rect.left, roiCanvas.width));
         let currentY = Math.max(0, Math.min(e.clientY - rect.top, roiCanvas.height));
-        
+
         const left = Math.min(roiStartX, currentX);
         const top = Math.min(roiStartY, currentY);
         const width = Math.abs(roiStartX - currentX);
         const height = Math.abs(roiStartY - currentY);
-        
+
         roiSelectionBox.style.left = `${left}px`;
         roiSelectionBox.style.top = `${top}px`;
         roiSelectionBox.style.width = `${width}px`;
         roiSelectionBox.style.height = `${height}px`;
-        
+
         roiSelectedArea = { left, top, width, height };
     });
 
@@ -719,10 +719,10 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             // Crop the image
             const cropCanvas = document.createElement('canvas');
             const cropCtx = cropCanvas.getContext('2d');
-            
+
             cropCanvas.width = roiSelectedArea.width * roiScale;
             cropCanvas.height = roiSelectedArea.height * roiScale;
-            
+
             cropCtx.drawImage(
                 roiOriginalImg,
                 roiSelectedArea.left * roiScale,
@@ -733,10 +733,10 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 cropCanvas.width,
                 cropCanvas.height
             );
-            
+
             labelBase64 = cropCanvas.toDataURL('image/jpeg', 0.9);
         }
-        
+
         roiModal.classList.add('hidden');
         validateState();
     });
@@ -774,7 +774,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             }
             const { text, pageCount } = await parsePdfText(file);
             templatePdfText = text;
-            
+
             // Check if text is sparse, if so we might need OCR later
             const isImageBased = text.trim().length < 150;
             if (isImageBased) {
@@ -813,15 +813,15 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             } else if (file.type.startsWith('image/')) {
                 base64 = await readImageToBase64(file);
             } else throw new Error(translations[currentLanguage].error_unsupported_label);
-            
+
             originalLabelBase64 = base64;
             labelImagePreview.src = base64;
             labelUploadContent.classList.add('hidden');
             labelPreviewContainer.classList.remove('hidden');
-            
+
             // Open ROI modal for the user to select ingredients area
             openROIModal(base64);
-            
+
             validateState();
         } catch (e) {
             alert(e.message);
@@ -832,7 +832,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     });
 
     // --- Redesigned Allergen Extractor Logic ---
-    
+
     // Bind top panel inputs
     if (allergenBrandInput) {
         allergenBrandInput.addEventListener('input', (e) => {
@@ -867,27 +867,27 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     // Render function
     function renderAllergenTable() {
         if (typeof allergens === 'undefined') return;
-        
+
         // 1. Render Headers
         allergenTableHeader.innerHTML = '';
-        
+
         // Sticky INCI header
         const thInci = document.createElement('th');
         thInci.className = 'sticky-col';
         thInci.textContent = 'INCI';
         allergenTableHeader.appendChild(thInci);
-        
+
         // Component headers
         perfumeComponents.forEach((comp, idx) => {
             const thComp = document.createElement('th');
-            
+
             // Build the card element
             const card = document.createElement('div');
             card.className = 'component-header-panel';
-            
+
             const topRow = document.createElement('div');
             topRow.className = 'component-header-top';
-            
+
             const titleSpan = document.createElement('span');
             titleSpan.className = 'component-title';
             titleSpan.textContent = comp.title;
@@ -912,7 +912,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 copyComponentColumn(idx, copyBtn);
             });
             topRow.appendChild(copyBtn);
-            
+
             // Delete button (only for extra columns)
             if (idx > 0) {
                 const delBtn = document.createElement('button');
@@ -925,33 +925,33 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 });
                 topRow.appendChild(delBtn);
             }
-            
+
             card.appendChild(topRow);
-            
+
             // Upload zone
             const uploadZone = document.createElement('div');
             uploadZone.className = 'component-upload-zone';
             uploadZone.id = `upload-zone-${comp.id}`;
-            
+
             if (comp.isLoading) {
                 uploadZone.innerHTML = '<span class="spinner-wheel"></span>';
             } else if (comp.fileName) {
                 const fileInfoDiv = document.createElement('div');
                 fileInfoDiv.className = 'component-file-info';
-                
+
                 const nameSpan = document.createElement('span');
                 nameSpan.className = 'component-filename';
                 nameSpan.textContent = comp.fileName;
                 nameSpan.title = comp.fileName;
                 fileInfoDiv.appendChild(nameSpan);
-                
+
                 const reuploadBtn = document.createElement('button');
                 reuploadBtn.className = 'component-reupload-btn';
                 reuploadBtn.textContent = '🔄';
                 reuploadBtn.title = currentLanguage === 'es' ? 'Volver a subir' : 'Re-upload';
                 reuploadBtn.addEventListener('click', () => fileInput.click());
                 fileInfoDiv.appendChild(reuploadBtn);
-                
+
                 uploadZone.appendChild(fileInfoDiv);
             } else {
                 const uBtn = document.createElement('button');
@@ -960,7 +960,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 uBtn.addEventListener('click', () => fileInput.click());
                 uploadZone.appendChild(uBtn);
             }
-            
+
             // Hidden file input for this specific component
             const fileInput = document.createElement('input');
             fileInput.type = 'file';
@@ -972,7 +972,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 }
             });
             thComp.appendChild(fileInput);
-            
+
             // Setup Drag and Drop
             uploadZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
@@ -993,16 +993,16 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                     }
                 }
             });
-            
+
             card.appendChild(uploadZone);
-            
+
             // Dose % Row
             const doseRow = document.createElement('div');
             doseRow.className = 'component-field-row';
             const doseLabel = document.createElement('label');
             doseLabel.textContent = translations[currentLanguage].dose_percent_label || 'Dose %';
             doseRow.appendChild(doseLabel);
-            
+
             const doseWrapper = document.createElement('div');
             doseWrapper.className = 'component-dose-wrapper';
             const doseInput = document.createElement('input');
@@ -1018,9 +1018,9 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             doseWrapper.appendChild(doseInput);
             doseWrapper.appendChild(document.createTextNode('%'));
             doseRow.appendChild(doseWrapper);
-            
+
             card.appendChild(doseRow);
-            
+
             // Product Code Row
             const codeRow = document.createElement('div');
             codeRow.className = 'component-field-row';
@@ -1036,9 +1036,9 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 calculateAllergenCompliance();
             });
             codeRow.appendChild(codeInput);
-            
+
             card.appendChild(codeRow);
-            
+
             // Printing Date Row
             const dateRow = document.createElement('div');
             dateRow.className = 'component-field-row';
@@ -1054,9 +1054,9 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 calculateAllergenCompliance();
             });
             dateRow.appendChild(dateInput);
-            
+
             card.appendChild(dateRow);
-            
+
             // Other INCI names found
             const extraIncisDiv = document.createElement('div');
             extraIncisDiv.className = 'component-extra-incis';
@@ -1064,7 +1064,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             extraIncisLabel.className = 'extra-incis-label';
             extraIncisLabel.textContent = translations[currentLanguage].extra_incis_title || 'Other INCIs';
             extraIncisDiv.appendChild(extraIncisLabel);
-            
+
             const extraList = document.createElement('div');
             extraList.className = 'extra-incis-list';
             if (comp.extraIncis && comp.extraIncis.length > 0) {
@@ -1077,13 +1077,13 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 extraList.innerHTML = '<div style="color: var(--text-muted); font-style: italic;">None</div>';
             }
             extraIncisDiv.appendChild(extraList);
-            
+
             card.appendChild(extraIncisDiv);
-            
+
             thComp.appendChild(card);
             allergenTableHeader.appendChild(thComp);
         });
-        
+
         // Plus Column header
         const thAdd = document.createElement('th');
         thAdd.className = 'component-add-th';
@@ -1094,28 +1094,28 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         addBtn.addEventListener('click', addComponentColumn);
         thAdd.appendChild(addBtn);
         allergenTableHeader.appendChild(thAdd);
-        
+
         // 2. Render Body Rows
         allergenTableBody.innerHTML = '';
         allergens.forEach((item, rowIdx) => {
             const row = document.createElement('tr');
-            
+
             // INCI name (sticky col)
             const tdInci = document.createElement('td');
             tdInci.className = 'sticky-col';
             tdInci.textContent = item.INCI;
             row.appendChild(tdInci);
-            
+
             // Concentrations for each component
             perfumeComponents.forEach((comp) => {
                 const tdVal = document.createElement('td');
                 tdVal.className = 'concentration-value';
                 tdVal.setAttribute('contenteditable', 'true');
-                
+
                 const normInci = normalizeIngredient(item.INCI);
                 const currentVal = comp.concentrations[normInci] !== undefined ? comp.concentrations[normInci] : 0;
                 tdVal.textContent = currentVal;
-                
+
                 // Track edits on blur so we don't lose focus while typing
                 tdVal.addEventListener('blur', (e) => {
                     const val = parseConcentration(e.target.textContent);
@@ -1123,14 +1123,14 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                     e.target.textContent = val;
                     calculateAllergenCompliance();
                 });
-                
+
                 row.appendChild(tdVal);
             });
-            
+
             // Add spacer cell at the end corresponding to the plus column
             const tdAddSpacer = document.createElement('td');
             row.appendChild(tdAddSpacer);
-            
+
             allergenTableBody.appendChild(row);
         });
 
@@ -1140,24 +1140,24 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
 
     function calculateAllergenCompliance() {
         if (typeof allergens === 'undefined') return;
-        
+
         const threshold = allergenRinseOff ? 0.01 : 0.001;
         let totalPerfumeDose = 0;
         perfumeComponents.forEach(comp => {
             totalPerfumeDose += (comp.dosePercent || 0);
         });
-        
+
         const productAllergens = [];
-        
+
         allergens.forEach(item => {
             const normInci = normalizeIngredient(item.INCI);
             let productConc = 0;
-            
+
             perfumeComponents.forEach(comp => {
                 const compConc = comp.concentrations[normInci] !== undefined ? comp.concentrations[normInci] : 0;
                 productConc += compConc * ((comp.dosePercent || 0) / 100);
             });
-            
+
             if (productConc > threshold) {
                 productAllergens.push({
                     inci: item.INCI,
@@ -1165,21 +1165,21 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 });
             }
         });
-        
+
         // Sort high >= 1% and low < 1%
         const highConc = productAllergens.filter(a => a.concentration >= 1.0);
         const lowConc = productAllergens.filter(a => a.concentration < 1.0);
-        
+
         highConc.sort((a, b) => b.concentration - a.concentration);
-        
+
         if (allergenSortAlphabeticalBelowOne) {
             lowConc.sort((a, b) => a.inci.localeCompare(b.inci));
         } else {
             lowConc.sort((a, b) => b.concentration - a.concentration);
         }
-        
+
         const declaredList = [...highConc, ...lowConc];
-        
+
         if (declaredAllergensList) {
             declaredAllergensList.innerHTML = '';
             if (declaredList.length === 0) {
@@ -1191,23 +1191,23 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 declaredList.forEach(item => {
                     const itemDiv = document.createElement('div');
                     itemDiv.className = 'declared-allergen-item';
-                    
+
                     const nameSpan = document.createElement('span');
                     nameSpan.className = 'allergen-inci';
                     nameSpan.textContent = item.inci;
-                    
+
                     const badgeSpan = document.createElement('span');
                     const isHigh = item.concentration >= 1.0;
                     badgeSpan.className = `allergen-concentration-badge ${isHigh ? 'high' : 'low'}`;
                     badgeSpan.textContent = item.concentration.toFixed(4).replace(/\.?0+$/, '') + '%';
-                    
+
                     itemDiv.appendChild(nameSpan);
                     itemDiv.appendChild(badgeSpan);
                     declaredAllergensList.appendChild(itemDiv);
                 });
             }
         }
-        
+
         // Calculate max safe perfume dosage before any single allergen triggers labeling.
         let maxPerfumeDosage = null;
         if (totalPerfumeDose > 0) {
@@ -1219,7 +1219,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                     const compConc = comp.concentrations[normInci] !== undefined ? comp.concentrations[normInci] : 0;
                     productConc += compConc * ((comp.dosePercent || 0) / 100);
                 });
-                
+
                 if (productConc > 0) {
                     const limit = (threshold * totalPerfumeDose) / productConc;
                     if (limit < minLimit) {
@@ -1231,7 +1231,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 maxPerfumeDosage = minLimit;
             }
         }
-        
+
         if (allergenMaxDoseInfo) {
             if (maxPerfumeDosage === null) {
                 const text = currentLanguage === 'es'
@@ -1323,7 +1323,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         doc.text((currentLanguage === 'es' ? 'Tipo de Producto:' : 'Product Type:'), margin, y);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(30, 41, 59);
-        const typeText = allergenRinseOff 
+        const typeText = allergenRinseOff
             ? (currentLanguage === 'es' ? 'Con aclarado (Rinse-off)' : 'Rinse-off')
             : (currentLanguage === 'es' ? 'Sin aclarado (Leave-on)' : 'Leave-on');
         doc.text(typeText, margin + 35, y);
@@ -1350,27 +1350,27 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(8.5);
         doc.setTextColor(100, 116, 139);
-        
+
         doc.text(currentLanguage === 'es' ? 'Componente' : 'Component', margin + 2, y + 5);
         doc.text(currentLanguage === 'es' ? 'Código de Producto' : 'Product Code', margin + 45, y + 5);
         doc.text(currentLanguage === 'es' ? 'Fecha Impresión' : 'Printing Date', margin + 95, y + 5);
         doc.text(currentLanguage === 'es' ? 'Dosis en Producto' : 'Dose in Product', margin + 140, y + 5);
-        
+
         y += 7;
 
         let totalDose = 0;
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(51, 65, 85);
-        
+
         perfumeComponents.forEach(comp => {
             checkPage(12);
             totalDose += (comp.dosePercent || 0);
-            
+
             doc.text(comp.title || '—', margin + 2, y + 5);
             doc.text(comp.productCode || '—', margin + 45, y + 5);
             doc.text(comp.printingDate || '—', margin + 95, y + 5);
             doc.text((comp.dosePercent || 0).toFixed(4).replace(/\.?0+$/, '') + '%', margin + 140, y + 5);
-            
+
             y += 7;
             doc.line(margin, y, pageW - margin, y);
         });
@@ -1395,7 +1395,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         y += 6;
 
         const threshold = allergenRinseOff ? 0.01 : 0.001;
-        
+
         doc.setFillColor(248, 250, 252);
         doc.rect(margin, y, contentW, 20, 'F');
         doc.setDrawColor(226, 232, 240);
@@ -1405,7 +1405,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         doc.setFontSize(8.5);
         doc.setTextColor(100, 116, 139);
         doc.text(currentLanguage === 'es' ? 'Límite de Declaración Aplicado:' : 'Declaration Limit Applied:', margin + 4, y + 6);
-        doc.text(currentLanguage === 'es' ? 'Dosis Máxima de Perfume Permitida:' : 'Max Allowed Perfume Dosage:', margin + 4, y + 14);
+        doc.text(currentLanguage === 'es' ? 'Dosis Máxima de Perfume Permitida sin declaración de alérgenos:' : 'Max Allowed Perfume Dosage before labeling allergens:', margin + 4, y + 14);
 
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(30, 41, 59);
@@ -1422,7 +1422,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                     const compConc = comp.concentrations[normInci] !== undefined ? comp.concentrations[normInci] : 0;
                     productConc += compConc * ((comp.dosePercent || 0) / 100);
                 });
-                
+
                 if (productConc > 0) {
                     const limit = (threshold * totalDose) / productConc;
                     if (limit < minLimit) {
@@ -1435,8 +1435,8 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             }
         }
 
-        const maxDoseFormatted = maxPerfumeDosage === null 
-            ? (currentLanguage === 'es' ? 'Sin límite' : 'No limit') 
+        const maxDoseFormatted = maxPerfumeDosage === null
+            ? (currentLanguage === 'es' ? 'Sin límite' : 'No limit')
             : maxPerfumeDosage.toFixed(4).replace(/\.?0+$/, '') + '%';
 
         doc.setFont('helvetica', 'bold');
@@ -1488,40 +1488,25 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             doc.text(currentLanguage === 'es' ? 'No hay alérgenos que declarar en la etiqueta.' : 'No allergens to declare on the label.', margin + 4, y + 6.5);
             y += 15;
         } else {
-            // Table Header
-            doc.setFillColor(248, 250, 252);
-            doc.rect(margin, y, contentW, 7, 'F');
-            doc.setDrawColor(226, 232, 240);
-            doc.line(margin, y, pageW - margin, y);
-            doc.line(margin, y + 7, pageW - margin, y + 7);
-
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(8.5);
-            doc.setTextColor(100, 116, 139);
-            doc.text('INCI', margin + 4, y + 5);
-            doc.text(currentLanguage === 'es' ? 'Concentración en Producto' : 'Concentration in Product', margin + 110, y + 5);
-            y += 7;
-
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8.5);
-            
-            declaredList.forEach(item => {
-                checkPage(8);
-                doc.setTextColor(30, 41, 59);
-                doc.text(item.inci, margin + 4, y + 5);
-                
-                if (item.concentration >= 1.0) {
-                    doc.setFont('helvetica', 'bold');
-                    doc.setTextColor(239, 68, 68); // Red
-                } else {
-                    doc.setFont('helvetica', 'normal');
-                    doc.setTextColor(71, 85, 105);
-                }
-                
-                doc.text(item.concentration.toFixed(4).replace(/\.?0+$/, '') + '%', margin + 110, y + 5);
-                y += 7;
-                doc.line(margin, y, pageW - margin, y);
-            });
+            doc.setFontSize(9.5);
+            doc.setTextColor(51, 65, 85);
+
+            const allergensString = declaredList.map(item => item.inci).join(', ');
+            const splitAllergens = doc.splitTextToSize(allergensString, contentW - 10);
+
+            const lineHeight = 5;
+            const neededHeight = splitAllergens.length * lineHeight + 8; // add padding
+
+            checkPage(neededHeight);
+
+            // Draw a subtle box around the list
+            doc.setFillColor(248, 250, 252);
+            doc.setDrawColor(226, 232, 240);
+            doc.rect(margin, y, contentW, neededHeight, 'FD');
+
+            doc.text(splitAllergens, margin + 5, y + 6);
+            y += neededHeight + 5;
         }
 
         const filename = (allergenProductName || 'allergen').toLowerCase().replace(/[^a-z0-9]/g, '-') + '-analysis-report.pdf';
@@ -1548,14 +1533,14 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     function deleteComponentColumn(idx) {
         if (idx === 0) return; // Cannot delete first column
         perfumeComponents.splice(idx, 1);
-        
+
         // Re-index titles (COMPONENT A, B, C...)
         perfumeComponents.forEach((comp, i) => {
             const id = String.fromCharCode(65 + i);
             comp.id = id;
             comp.title = `COMPONENT ${id}`;
         });
-        
+
         renderAllergenTable();
     }
 
@@ -1575,7 +1560,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             const { text } = await parsePdfText(file);
             const inciList = (typeof allergens !== 'undefined') ? allergens.map(a => a.INCI).join(', ') : '';
             const prompt = translations[currentLanguage].allergen_prompt.replace('{inci_list}', inciList);
-            
+
             let resultText;
             if (text.trim().length > 150) {
                 resultText = await fetchAiTextExtraction(apiKey, text, prompt);
@@ -1586,13 +1571,13 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
 
             resultText = resultText.replace(/\*/g, '');
             const result = extractJsonSafely(resultText);
-            
+
             console.log(`AI Result for Component ${comp.id}:`, result);
 
             comp.productCode = result.product_code || '';
             const rawDate = result.printing_date || '';
             comp.printingDate = rawDate.replace(/\./g, '-');
-            
+
             // Store concentrations
             comp.concentrations = {};
             if (result.allergens && Array.isArray(result.allergens)) {
@@ -1605,7 +1590,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                     }
                 });
             }
-            
+
             // Store extra INCIs
             comp.extraIncis = [];
             if (result.extra_incis && Array.isArray(result.extra_incis)) {
@@ -1619,7 +1604,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                     };
                 });
             }
-            
+
         } catch (e) {
             console.error("AI Error:", e);
             alert("Error processing PDF: " + e.message);
@@ -1638,7 +1623,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             return String(val).replace(/\./g, ',');
         });
         const clipboardText = [identifier, ...values].join('\t');
-        
+
         navigator.clipboard.writeText(clipboardText).then(() => {
             const tooltip = buttonEl.querySelector('svg');
             const originalColor = buttonEl.style.color;
@@ -1667,17 +1652,17 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 });
                 return [item.INCI, ...values];
             });
-            
+
             const clipboardText = [headerRow, ...rows].map(r => r.join('\t')).join('\n');
-            
+
             navigator.clipboard.writeText(clipboardText).then(() => {
                 const originalText = copyConcentrationsBtn.querySelector('[data-i18n]').textContent;
                 const successText = translations[currentLanguage].concentrations_copied || "Copied!";
                 const span = copyConcentrationsBtn.querySelector('[data-i18n]');
-                
+
                 span.textContent = successText;
                 copyConcentrationsBtn.classList.add('success');
-                
+
                 setTimeout(() => {
                     span.textContent = originalText;
                     copyConcentrationsBtn.classList.remove('success');
@@ -1726,7 +1711,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         const pageCount = Math.min(pdf.numPages, maxPages);
-        
+
         if (pageCount === 1) {
             const page = await pdf.getPage(1);
             const viewport = page.getViewport({ scale: 2.0 });
@@ -1741,7 +1726,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             const pageData = [];
             let totalHeight = 0;
             let maxWidth = 0;
-            
+
             for (let i = 1; i <= pageCount; i++) {
                 const page = await pdf.getPage(i);
                 const viewport = page.getViewport({ scale: 1.5 }); // Slightly lower scale for multi-page to avoid memory issues
@@ -1749,12 +1734,12 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 totalHeight += viewport.height;
                 maxWidth = Math.max(maxWidth, viewport.width);
             }
-            
+
             const canvas = document.createElement('canvas');
             canvas.width = maxWidth;
             canvas.height = totalHeight;
             const ctx = canvas.getContext('2d');
-            
+
             let currentY = 0;
             for (const item of pageData) {
                 const pageCanvas = document.createElement('canvas');
@@ -1762,7 +1747,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 pageCanvas.height = item.viewport.height;
                 const pageCtx = pageCanvas.getContext('2d');
                 await item.page.render({ canvasContext: pageCtx, viewport: item.viewport }).promise;
-                
+
                 ctx.drawImage(pageCanvas, (maxWidth - item.viewport.width) / 2, currentY);
                 currentY += item.viewport.height;
             }
@@ -1775,7 +1760,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         const pageCount = Math.min(pdf.numPages, maxPages);
         const images = [];
-        
+
         for (let i = 1; i <= pageCount; i++) {
             const page = await pdf.getPage(i);
             const viewport = page.getViewport({ scale: 2.0 });
@@ -1870,7 +1855,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     function parseConcentration(val) {
         if (val === undefined || val === null) return 0;
         if (typeof val === 'number') return val;
-        
+
         let s = String(val).trim();
         if (!s) return 0;
 
@@ -2003,7 +1988,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             aiModel = 'mistral-ocr-2512';
         } else if (!apiKey.startsWith('sk-or-v1-')) {
             apiUrl = 'https://api.openai.com/v1/chat/completions';
-            aiModel = 'gpt-4o-mini'; 
+            aiModel = 'gpt-4o-mini';
         }
 
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -2023,7 +2008,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                                 img.src = src;
                             });
                         }));
-                        
+
                         canvas.width = Math.max(...loadedImages.map(img => img.width));
                         canvas.height = loadedImages.reduce((sum, img) => sum + img.height, 0);
                         let currentY = 0;
@@ -2246,7 +2231,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             } else {
                 console.log("Template is image-based, using Vision/OCR...");
                 // Note: file is not directly available here, so we'd need to have pre-rendered or pass it.
-                // However, since we're in the click handler and we only have templatePdfText, 
+                // However, since we're in the click handler and we only have templatePdfText,
                 // we should have rendered it during upload.
                 // Let's assume for now we use the text-based one OR we should have stored images.
                 // To be robust, let's look for where we handle template upload.
@@ -2258,7 +2243,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                     templateResponseText = await fetchAiTextExtraction(apiKey, templatePdfText, templatePrompt);
                 }
             }
-            
+
             let labelResponseText = await fetchAiExtraction(apiKey, labelBase64, labelPrompt);
 
             // Clean asterisks globally from the raw text
@@ -2480,17 +2465,17 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         var colW = 65;
         var tColX = margin + 12;
         var lColX = pageW - margin - colW;
-        
+
         // Headers for columns
         doc.setFontSize(9);
         doc.setTextColor(100, 116, 139);
         doc.text(translations[currentLanguage].template_col_header.toUpperCase(), tColX + colW/2, y, { align: 'center' });
         doc.text(translations[currentLanguage].label_col_header.toUpperCase(), lColX + colW/2, y, { align: 'center' });
-        
+
         doc.setFontSize(6.5);
         doc.text(translations[currentLanguage].pdf_concentration, tColX - 6, y - 1.5, { align: 'center' });
         doc.text(translations[currentLanguage].pdf_range, tColX - 6, y + 1.5, { align: 'center' });
-        
+
         y += 6;
 
         var tPositions = {};
@@ -2527,7 +2512,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             var statusColor = [148, 163, 184]; // default
             if (t.status === 'matched') statusColor = [16, 185, 129];
             else if (t.status === 'missing') statusColor = [245, 158, 11];
-            
+
             doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
             doc.rect(tColX, itemY, 1.5, diagBoxH, 'F');
 
@@ -2589,10 +2574,10 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                         var color = (l.status === 'misordered') ? [59, 130, 246] : [16, 185, 129];
                         doc.setDrawColor(color[0], color[1], color[2]);
                         doc.setLineWidth(0.3);
-                        
+
                         // Draw line
                         doc.line(startX, startY, endX, endY);
-                        
+
                         // Draw arrow head
                         var headSize = 1.2;
                         var angle = Math.atan2(endY - startY, endX - startX);
@@ -2733,7 +2718,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 if (mutation.type === 'attributes') {
                     const { attributeName } = mutation;
                     const classList = target.classList;
-                    
+
                     // Check for Google Translate classes or lang attribute changes
                     const isGoogleTranslated = classList.contains('translated-ltr') || classList.contains('translated-rtl');
                     const isLangChanged = attributeName === 'lang' && target.getAttribute('lang') !== currentLanguage;
