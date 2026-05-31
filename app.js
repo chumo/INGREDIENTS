@@ -84,7 +84,12 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             concentrations_copied: "¡Copiado!",
             allergen_empty_msg: "Sube un PDF para ver los detalles",
             concentration_percent: "Concentración %",
-            extra_incis_title: "Otros INCI encontrados"
+            extra_incis_title: "Otros INCI encontrados",
+            brand_label: "Marca",
+            product_name_label: "Nombre del Producto",
+            rinse_off_label: "¿Producto para aclarado?",
+            dose_percent_label: "Dosis %",
+            delete_column_tooltip: "Eliminar este componente"
         },
         en: {
             header_app_name: "LABEL REGULATORY",
@@ -170,8 +175,12 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             concentrations_copied: "Copied!",
             allergen_empty_msg: "Upload a PDF to see details",
             concentration_percent: "Concentration %",
-            extra_incis_title: "Other INCI names found"
-
+            extra_incis_title: "Other INCI names found",
+            brand_label: "Brand",
+            product_name_label: "Product Name",
+            rinse_off_label: "Rinse-off product?",
+            dose_percent_label: "Dose %",
+            delete_column_tooltip: "Delete this component"
         }
     };
 
@@ -232,24 +241,31 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     const providerName = document.getElementById('provider-name');
     const modelVersion = document.getElementById('model-version');
 
-    // Allergen Extractor Elements
-    const allergenDropZone = document.getElementById('allergen-drop-zone');
-    const allergenFileInput = document.getElementById('allergen-file-input');
-    const allergenInfoPanel = document.getElementById('allergen-info-panel');
-    const allergenFileInfoDisplay = document.getElementById('allergen-file-info-display');
-    const allergenEmptyState = document.getElementById('allergen-empty-state');
-    const allergenStatusIcon = document.getElementById('allergen-status-icon');
-    const allergenFilename = document.getElementById('allergen-current-filename');
-    const metaProductCode = document.getElementById('meta-product-code');
-    const metaPrintingDate = document.getElementById('meta-printing-date');
+    // Allergen Extractor Elements (Redesigned)
+    const allergenBrandInput = document.getElementById('allergen-brand');
+    const allergenProductNameInput = document.getElementById('allergen-product-name');
+    const allergenRinseOffInput = document.getElementById('allergen-rinse-off');
     const copyConcentrationsBtn = document.getElementById('copy-concentrations-btn');
     const allergenTableBody = document.getElementById('allergen-table-body');
     const allergenTableHeader = document.getElementById('allergen-table-header');
-    const allergenExtraIncisContainer = document.getElementById('allergen-extra-incis-container');
-    const allergenExtraIncisList = document.getElementById('allergen-extra-incis-list');
     
-    let uploadedAllergenFiles = [];
-    let allergenDataMap = new Map(); // Map of INCI -> { columnKey -> percentage }
+    // Allergen tab State
+    let allergenBrand = '';
+    let allergenProductName = '';
+    let allergenRinseOff = false;
+    let perfumeComponents = [
+        {
+            id: 'A',
+            title: 'COMPONENT A',
+            fileName: '',
+            dosePercent: 100,
+            productCode: '',
+            printingDate: '',
+            extraIncis: [],
+            concentrations: {},
+            isLoading: false
+        }
+    ];
 
 
 
@@ -796,68 +812,334 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         }
     });
 
-    // --- Allergen Extractor Logic ---
-    function initAllergenTable() {
-        if (typeof allergens === 'undefined') return;
-        allergenTableBody.innerHTML = '';
-        
-        // Ensure header has exactly two columns
-        allergenTableHeader.innerHTML = `
-            <th class="sticky-col">INCI</th>
-            <th data-i18n="concentration_percent">${translations[currentLanguage].concentration_percent || "Concentración %"}</th>
-        `;
+    // --- Redesigned Allergen Extractor Logic ---
+    
+    // Bind top panel inputs
+    if (allergenBrandInput) {
+        allergenBrandInput.addEventListener('input', (e) => {
+            allergenBrand = e.target.value;
+        });
+    }
+    if (allergenProductNameInput) {
+        allergenProductNameInput.addEventListener('input', (e) => {
+            allergenProductName = e.target.value;
+        });
+    }
+    if (allergenRinseOffInput) {
+        allergenRinseOffInput.addEventListener('change', (e) => {
+            allergenRinseOff = e.target.checked;
+        });
+    }
 
-        allergens.forEach(item => {
+    // Render function
+    function renderAllergenTable() {
+        if (typeof allergens === 'undefined') return;
+        
+        // 1. Render Headers
+        allergenTableHeader.innerHTML = '';
+        
+        // Sticky INCI header
+        const thInci = document.createElement('th');
+        thInci.className = 'sticky-col';
+        thInci.textContent = 'INCI';
+        allergenTableHeader.appendChild(thInci);
+        
+        // Component headers
+        perfumeComponents.forEach((comp, idx) => {
+            const thComp = document.createElement('th');
+            
+            // Build the card element
+            const card = document.createElement('div');
+            card.className = 'component-header-panel';
+            
+            const topRow = document.createElement('div');
+            topRow.className = 'component-header-top';
+            
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'component-title';
+            titleSpan.textContent = comp.title;
+            topRow.appendChild(titleSpan);
+
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'btn-copy-column';
+            copyBtn.style.background = 'none';
+            copyBtn.style.border = 'none';
+            copyBtn.style.cursor = 'pointer';
+            copyBtn.style.color = 'var(--text-muted)';
+            copyBtn.style.padding = '0 4px';
+            copyBtn.style.marginLeft = 'auto';
+            copyBtn.title = currentLanguage === 'es' ? 'Copiar esta columna' : 'Copy this column';
+            copyBtn.innerHTML = `
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+            `;
+            copyBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                copyComponentColumn(idx, copyBtn);
+            });
+            topRow.appendChild(copyBtn);
+            
+            // Delete button (only for extra columns)
+            if (idx > 0) {
+                const delBtn = document.createElement('button');
+                delBtn.className = 'btn-delete-column';
+                delBtn.title = translations[currentLanguage].delete_column_tooltip || "Delete this component";
+                delBtn.innerHTML = '×';
+                delBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteComponentColumn(idx);
+                });
+                topRow.appendChild(delBtn);
+            }
+            
+            card.appendChild(topRow);
+            
+            // Upload zone
+            const uploadZone = document.createElement('div');
+            uploadZone.className = 'component-upload-zone';
+            uploadZone.id = `upload-zone-${comp.id}`;
+            
+            if (comp.isLoading) {
+                uploadZone.innerHTML = '<span class="spinner-wheel"></span>';
+            } else if (comp.fileName) {
+                const fileInfoDiv = document.createElement('div');
+                fileInfoDiv.className = 'component-file-info';
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'component-filename';
+                nameSpan.textContent = comp.fileName;
+                nameSpan.title = comp.fileName;
+                fileInfoDiv.appendChild(nameSpan);
+                
+                const reuploadBtn = document.createElement('button');
+                reuploadBtn.className = 'component-reupload-btn';
+                reuploadBtn.textContent = '🔄';
+                reuploadBtn.title = currentLanguage === 'es' ? 'Volver a subir' : 'Re-upload';
+                reuploadBtn.addEventListener('click', () => fileInput.click());
+                fileInfoDiv.appendChild(reuploadBtn);
+                
+                uploadZone.appendChild(fileInfoDiv);
+            } else {
+                const uBtn = document.createElement('button');
+                uBtn.className = 'btn btn-primary btn-sm component-upload-btn';
+                uBtn.textContent = translations[currentLanguage].browse_files || 'Browse Files';
+                uBtn.addEventListener('click', () => fileInput.click());
+                uploadZone.appendChild(uBtn);
+            }
+            
+            // Hidden file input for this specific component
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.pdf,application/pdf';
+            fileInput.style.display = 'none';
+            fileInput.addEventListener('change', async (e) => {
+                if (e.target.files.length > 0) {
+                    await processComponentPdf(e.target.files[0], idx);
+                }
+            });
+            thComp.appendChild(fileInput);
+            
+            // Setup Drag and Drop
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('drag-active');
+            });
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('drag-active');
+            });
+            uploadZone.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('drag-active');
+                if (e.dataTransfer.files.length > 0) {
+                    const file = e.dataTransfer.files[0];
+                    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+                        await processComponentPdf(file, idx);
+                    } else {
+                        alert(translations[currentLanguage].error_pdf_only);
+                    }
+                }
+            });
+            
+            card.appendChild(uploadZone);
+            
+            // Dose % Row
+            const doseRow = document.createElement('div');
+            doseRow.className = 'component-field-row';
+            const doseLabel = document.createElement('label');
+            doseLabel.textContent = translations[currentLanguage].dose_percent_label || 'Dose %';
+            doseRow.appendChild(doseLabel);
+            
+            const doseWrapper = document.createElement('div');
+            doseWrapper.className = 'component-dose-wrapper';
+            const doseInput = document.createElement('input');
+            doseInput.type = 'number';
+            doseInput.value = comp.dosePercent;
+            doseInput.min = '0';
+            doseInput.max = '100';
+            doseInput.step = 'any';
+            doseInput.addEventListener('input', (e) => {
+                comp.dosePercent = parseFloat(e.target.value) || 0;
+            });
+            doseWrapper.appendChild(doseInput);
+            doseWrapper.appendChild(document.createTextNode('%'));
+            doseRow.appendChild(doseWrapper);
+            
+            card.appendChild(doseRow);
+            
+            // Product Code Row
+            const codeRow = document.createElement('div');
+            codeRow.className = 'component-field-row';
+            const codeLabel = document.createElement('label');
+            codeLabel.textContent = translations[currentLanguage].product_code || 'Code';
+            codeRow.appendChild(codeLabel);
+            const codeInput = document.createElement('input');
+            codeInput.type = 'text';
+            codeInput.value = comp.productCode;
+            codeInput.placeholder = '—';
+            codeInput.addEventListener('input', (e) => {
+                comp.productCode = e.target.value;
+            });
+            codeRow.appendChild(codeInput);
+            
+            card.appendChild(codeRow);
+            
+            // Printing Date Row
+            const dateRow = document.createElement('div');
+            dateRow.className = 'component-field-row';
+            const dateLabel = document.createElement('label');
+            dateLabel.textContent = translations[currentLanguage].printing_date || 'Date';
+            dateRow.appendChild(dateLabel);
+            const dateInput = document.createElement('input');
+            dateInput.type = 'text';
+            dateInput.value = comp.printingDate;
+            dateInput.placeholder = '—';
+            dateInput.addEventListener('input', (e) => {
+                comp.printingDate = e.target.value;
+            });
+            dateRow.appendChild(dateInput);
+            
+            card.appendChild(dateRow);
+            
+            // Other INCI names found
+            const extraIncisDiv = document.createElement('div');
+            extraIncisDiv.className = 'component-extra-incis';
+            const extraIncisLabel = document.createElement('span');
+            extraIncisLabel.className = 'extra-incis-label';
+            extraIncisLabel.textContent = translations[currentLanguage].extra_incis_title || 'Other INCIs';
+            extraIncisDiv.appendChild(extraIncisLabel);
+            
+            const extraList = document.createElement('div');
+            extraList.className = 'extra-incis-list';
+            if (comp.extraIncis && comp.extraIncis.length > 0) {
+                comp.extraIncis.forEach(item => {
+                    const extraItem = document.createElement('div');
+                    extraItem.textContent = `${item.inci || item.name} (${item.percentage}%)`;
+                    extraList.appendChild(extraItem);
+                });
+            } else {
+                extraList.innerHTML = '<div style="color: var(--text-muted); font-style: italic;">None</div>';
+            }
+            extraIncisDiv.appendChild(extraList);
+            
+            card.appendChild(extraIncisDiv);
+            
+            thComp.appendChild(card);
+            allergenTableHeader.appendChild(thComp);
+        });
+        
+        // Plus Column header
+        const thAdd = document.createElement('th');
+        thAdd.className = 'component-add-th';
+        const addBtn = document.createElement('button');
+        addBtn.className = 'btn-add-column';
+        addBtn.textContent = '+';
+        addBtn.title = currentLanguage === 'es' ? 'Añadir componente' : 'Add component';
+        addBtn.addEventListener('click', addComponentColumn);
+        thAdd.appendChild(addBtn);
+        allergenTableHeader.appendChild(thAdd);
+        
+        // 2. Render Body Rows
+        allergenTableBody.innerHTML = '';
+        allergens.forEach((item, rowIdx) => {
             const row = document.createElement('tr');
+            
+            // INCI name (sticky col)
             const tdInci = document.createElement('td');
             tdInci.className = 'sticky-col';
             tdInci.textContent = item.INCI;
             row.appendChild(tdInci);
-
-            const tdValue = document.createElement('td');
-            tdValue.className = 'concentration-value';
-            tdValue.setAttribute('contenteditable', 'true');
-            tdValue.textContent = '0';
-            row.appendChild(tdValue);
-
+            
+            // Concentrations for each component
+            perfumeComponents.forEach((comp) => {
+                const tdVal = document.createElement('td');
+                tdVal.className = 'concentration-value';
+                tdVal.setAttribute('contenteditable', 'true');
+                
+                const normInci = normalizeIngredient(item.INCI);
+                const currentVal = comp.concentrations[normInci] !== undefined ? comp.concentrations[normInci] : 0;
+                tdVal.textContent = currentVal;
+                
+                // Track edits on blur so we don't lose focus while typing
+                tdVal.addEventListener('blur', (e) => {
+                    const val = parseConcentration(e.target.textContent);
+                    comp.concentrations[normInci] = val;
+                    e.target.textContent = val;
+                });
+                
+                row.appendChild(tdVal);
+            });
+            
+            // Add spacer cell at the end corresponding to the plus column
+            const tdAddSpacer = document.createElement('td');
+            row.appendChild(tdAddSpacer);
+            
             allergenTableBody.appendChild(row);
         });
     }
 
+    // Helper functions
+    function addComponentColumn() {
+        const nextId = String.fromCharCode(65 + perfumeComponents.length); // A, B, C...
+        perfumeComponents.push({
+            id: nextId,
+            title: `COMPONENT ${nextId}`,
+            fileName: '',
+            dosePercent: perfumeComponents.length === 0 ? 100 : 50,
+            productCode: '',
+            printingDate: '',
+            extraIncis: [],
+            concentrations: {},
+            isLoading: false
+        });
+        renderAllergenTable();
+    }
 
-    initAllergenTable();
+    function deleteComponentColumn(idx) {
+        if (idx === 0) return; // Cannot delete first column
+        perfumeComponents.splice(idx, 1);
+        
+        // Re-index titles (COMPONENT A, B, C...)
+        perfumeComponents.forEach((comp, i) => {
+            const id = String.fromCharCode(65 + i);
+            comp.id = id;
+            comp.title = `COMPONENT ${id}`;
+        });
+        
+        renderAllergenTable();
+    }
 
-    setupDropZone(allergenDropZone, allergenFileInput, async (file) => {
-        try {
-            if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-                throw new Error(translations[currentLanguage].error_pdf_only);
-            }
-            await processAllergenPdf(file);
-        } catch (e) {
-            alert(e.message);
-        }
-    });
-
-    async function processAllergenPdf(file) {
+    async function processComponentPdf(file, componentIndex) {
         const apiKey = apiKeyInput.value.trim();
         if (!apiKey) {
             alert(translations[currentLanguage].api_key_label || "Please enter an API Key first.");
             return;
         }
 
-        // Reset UI for new file
-        allergenEmptyState.classList.add('hidden');
-        allergenFileInfoDisplay.classList.remove('hidden');
-        allergenStatusIcon.innerHTML = '<span class="spinner-wheel"></span>';
-        allergenFilename.textContent = file.name;
-        metaProductCode.textContent = '...';
-        metaPrintingDate.textContent = '...';
-        allergenExtraIncisContainer.classList.add('hidden');
-        allergenExtraIncisList.innerHTML = '';
-        
-        // Reset table values
-        const valueCells = allergenTableBody.querySelectorAll('.concentration-value');
-        valueCells.forEach(cell => cell.textContent = '0');
+        const comp = perfumeComponents[componentIndex];
+        comp.isLoading = true;
+        comp.fileName = file.name;
+        renderAllergenTable();
 
         try {
             const { text } = await parsePdfText(file);
@@ -866,101 +1148,103 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             
             let resultText;
             if (text.trim().length > 150) {
-                // Sufficient text, use text-based extraction
                 resultText = await fetchAiTextExtraction(apiKey, text, prompt);
             } else {
-                // Scanned PDF or very little text, use vision-based extraction (OCR)
-                console.log("PDF has very little text, switching to Vision/OCR mode...");
                 const images = await renderPdfToImages(file);
                 resultText = await fetchAiExtraction(apiKey, images, prompt);
             }
 
-            // Clean raw text
             resultText = resultText.replace(/\*/g, '');
-
             const result = extractJsonSafely(resultText);
             
-            console.log("Allergen Extraction Result:", result);
+            console.log(`AI Result for Component ${comp.id}:`, result);
 
-            const productCode = result.product_code || '—';
-            const rawDate = result.printing_date || '—';
-            const printingDate = rawDate.replace(/\./g, '-');
+            comp.productCode = result.product_code || '';
+            const rawDate = result.printing_date || '';
+            comp.printingDate = rawDate.replace(/\./g, '-');
             
-            metaProductCode.textContent = productCode;
-            metaPrintingDate.textContent = printingDate;
-            
-            // Map extracted allergens
-            const extractedMap = new Map();
+            // Store concentrations
+            comp.concentrations = {};
             if (result.allergens && Array.isArray(result.allergens)) {
                 result.allergens.forEach(a => {
                     const name = a.inci || a.name || "";
                     const normInci = normalizeIngredient(name);
                     if (normInci) {
                         const p = parseConcentration(a.percentage);
-                        extractedMap.set(normInci, p);
+                        comp.concentrations[normInci] = p;
                     }
                 });
             }
-
-            // Update table rows
-            const rows = allergenTableBody.querySelectorAll('tr');
-            rows.forEach((row, index) => {
-                const item = allergens[index];
-                if (!item) return;
-
-                const normInci = normalizeIngredient(item.INCI);
-                const percentage = extractedMap.has(normInci) ? extractedMap.get(normInci) : 0;
-                
-                const valueCell = row.querySelector('.concentration-value');
-                if (valueCell) {
-                    valueCell.textContent = percentage;
-                }
-            });
             
-            // Display extra INCI names (only if percentage > 0)
+            // Store extra INCIs
+            comp.extraIncis = [];
             if (result.extra_incis && Array.isArray(result.extra_incis)) {
-                const filtered = result.extra_incis.filter(a => {
+                comp.extraIncis = result.extra_incis.filter(a => {
                     const p = parseConcentration(a.percentage);
                     return p > 0;
+                }).map(a => {
+                    return {
+                        inci: a.inci || a.name || '',
+                        percentage: parseConcentration(a.percentage)
+                    };
                 });
-
-                if (filtered.length > 0) {
-                    allergenExtraIncisList.innerHTML = filtered.map(a => {
-                        const p = parseConcentration(a.percentage);
-                        return `<div>${a.inci || a.name || ''} (${p}%)</div>`;
-                    }).join('');
-                    allergenExtraIncisContainer.classList.remove('hidden');
-                } else {
-                    allergenExtraIncisContainer.classList.add('hidden');
-                }
-            } else {
-                allergenExtraIncisContainer.classList.add('hidden');
             }
-
-            allergenStatusIcon.innerHTML = '✅';
+            
         } catch (e) {
-            allergenStatusIcon.innerHTML = '❌';
-            console.error("Allergen Processing Error:", e);
+            console.error("AI Error:", e);
             alert("Error processing PDF: " + e.message);
+        } finally {
+            comp.isLoading = false;
+            renderAllergenTable();
         }
     }
 
+    function copyComponentColumn(idx, buttonEl) {
+        const comp = perfumeComponents[idx];
+        const identifier = `${comp.productCode}_${comp.printingDate}`;
+        const values = allergens.map(item => {
+            const normInci = normalizeIngredient(item.INCI);
+            const val = comp.concentrations[normInci] !== undefined ? comp.concentrations[normInci] : 0;
+            return String(val).replace(/\./g, ',');
+        });
+        const clipboardText = [identifier, ...values].join('\t');
+        
+        navigator.clipboard.writeText(clipboardText).then(() => {
+            const tooltip = buttonEl.querySelector('svg');
+            const originalColor = buttonEl.style.color;
+            buttonEl.style.color = 'var(--success)';
+            setTimeout(() => {
+                buttonEl.style.color = originalColor;
+            }, 1500);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            alert("Failed to copy to clipboard");
+        });
+    }
+
+    // Call dynamic render on start
+    renderAllergenTable();
+
     if (copyConcentrationsBtn) {
         copyConcentrationsBtn.addEventListener('click', () => {
-            const productCode = metaProductCode.textContent.trim();
-            const printingDate = metaPrintingDate.textContent.trim();
-            const identifier = `${productCode}_${printingDate}`;
-
-            const valueCells = allergenTableBody.querySelectorAll('.concentration-value');
-            const values = Array.from(valueCells).map(cell => cell.textContent.trim().replace(/\./g, ',')); 
+            // Copy all columns as a tab-separated spreadsheet format
+            const headerRow = ['INCI', ...perfumeComponents.map(c => `${c.title} (${c.productCode || '—'} - ${c.printingDate || '—'})`)];
+            const rows = allergens.map(item => {
+                const normInci = normalizeIngredient(item.INCI);
+                const values = perfumeComponents.map(c => {
+                    const val = c.concentrations[normInci] !== undefined ? c.concentrations[normInci] : 0;
+                    return String(val).replace(/\./g, ',');
+                });
+                return [item.INCI, ...values];
+            });
             
-            const clipboardText = [identifier, ...values].join('\t');
+            const clipboardText = [headerRow, ...rows].map(r => r.join('\t')).join('\n');
             
             navigator.clipboard.writeText(clipboardText).then(() => {
                 const originalText = copyConcentrationsBtn.querySelector('[data-i18n]').textContent;
                 const successText = translations[currentLanguage].concentrations_copied || "Copied!";
-                
                 const span = copyConcentrationsBtn.querySelector('[data-i18n]');
+                
                 span.textContent = successText;
                 copyConcentrationsBtn.classList.add('success');
                 

@@ -71,70 +71,50 @@
         <div id="tab-allergen" class="tab-content hidden">
             <header>
                 <h1 data-i18n="allergen_title">Allergen Extractor</h1>
-                <p data-i18n="allergen_subtitle">Upload an allergen document to extract their concentration percentages.</p>
+                <p data-i18n="allergen_subtitle">Upload allergen documents to extract their concentration percentages and analyze compliance.</p>
             </header>
-            <div class="allergen-layout">
-                <aside class="allergen-left-panel">
-                    <section class="card allergen-uploader-section" id="allergen-drop-zone">
-                        <h2 data-i18n="allergen_uploader_title">Allergens</h2>
-                        <div class="upload-content mini-uploader" id="allergen-upload-content">
-                            <svg viewBox="0 0 24 24" fill="none" class="upload-icon" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            
+            <div class="allergen-container-new">
+                <section class="card allergen-top-panel">
+                    <div class="allergen-top-panel-inputs">
+                        <div class="input-group">
+                            <label for="allergen-brand" data-i18n="brand_label">Marca</label>
+                            <input type="text" id="allergen-brand" placeholder="Ej. IBERCHEM">
+                        </div>
+                        <div class="input-group">
+                            <label for="allergen-product-name" data-i18n="product_name_label">Nombre del Producto</label>
+                            <input type="text" id="allergen-product-name" placeholder="Ej. Fragancia Eweent">
+                        </div>
+                        <div class="input-group-checkbox">
+                            <input type="checkbox" id="allergen-rinse-off">
+                            <label for="allergen-rinse-off" data-i18n="rinse_off_label">¿Producto para aclarado?</label>
+                        </div>
+                    </div>
+                </section>
+                
+                <section class="card table-card allergen-table-card">
+                    <div class="table-toolbar" style="display: flex; justify-content: flex-end; padding: 1rem 1rem 0; background: transparent; border: none; gap: 1rem;">
+                        <button class="btn btn-secondary btn-sm" id="copy-concentrations-btn">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;">
+                                <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                             </svg>
-                            <p data-i18n="pdf_only">Solo documentos PDF</p>
-                            <input type="file" id="allergen-file-input" accept=".pdf,application/pdf" hidden>
-                            <button class="btn btn-primary btn-sm" onclick="document.getElementById('allergen-file-input').click()" data-i18n="browse_files">Buscar Archivos</button>
-                        </div>
-                    </section>
-                    <section class="card allergen-info-section" id="allergen-info-panel">
-                        <div id="allergen-file-info-display" class="hidden">
-                            <div class="allergen-file-header">
-                                <span id="allergen-status-icon" class="status-icon"></span>
-                                <span id="allergen-current-filename" class="file-name-display"></span>
-                            </div>
-                            <div class="allergen-metadata">
-                                <div class="meta-row">
-                                    <span class="meta-label" data-i18n="product_code">Código de Producto</span>:
-                                    <span id="meta-product-code" class="meta-value" contenteditable="true">—</span>
-                                </div>
-                                <div class="meta-row">
-                                    <span class="meta-label" data-i18n="printing_date">Fecha de Impresión</span>:
-                                    <span id="meta-printing-date" class="meta-value" contenteditable="true">—</span>
-                                </div>
-                            </div>
-                            <button class="btn btn-secondary btn-sm" id="copy-concentrations-btn" style="margin-top: 1.5rem; width: 100%; justify-content: center;">
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                                </svg>
-                                <span data-i18n="copy_to_clipboard">Copiar al Portapapeles</span>
-                            </button>
-                            <div id="allergen-extra-incis-container" class="hidden" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-                                <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-muted);" data-i18n="extra_incis_title">Otros INCI encontrados</h3>
-                                <div id="allergen-extra-incis-list" style="font-size: 0.85rem; line-height: 1.4; color: var(--text-main);"></div>
-                            </div>
-                        </div>
-                        <div id="allergen-empty-state" class="empty-state-msg">
-                            <p data-i18n="allergen_empty_msg">Sube un PDF para ver los detalles</p>
-                        </div>
-                    </section>
-                </aside>
-                <main class="allergen-right-panel">
-                    <section class="card table-card">
-                        <div class="table-container">
-                            <table id="allergen-table">
-                                <thead>
-                                    <tr id="allergen-table-header">
-                                        <th class="sticky-col">INCI</th>
-                                        <th data-i18n="concentration_percent">Concentración %</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="allergen-table-body">
-                                    <!-- Initial INCI list will be populated here -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </section>
-                </main>
+                            <span data-i18n="copy_to_clipboard">Copiar al Portapapeles</span>
+                        </button>
+                    </div>
+                    <div class="table-container" style="padding: 1rem;">
+                        <table id="allergen-table">
+                            <thead>
+                                <tr id="allergen-table-header">
+                                    <th class="sticky-col">INCI</th>
+                                    <!-- Dynamic component headers and add button will be rendered here -->
+                                </tr>
+                            </thead>
+                            <tbody id="allergen-table-body">
+                                <!-- Dynamic rows with INCI names and concentration inputs will be rendered here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
         </div>
 
