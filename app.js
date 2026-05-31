@@ -1409,7 +1409,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
 
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(30, 41, 59);
-        doc.text(threshold + '%', margin + 70, y + 6);
+        doc.text(threshold + '%', margin + 52, y + 6);
 
         // Max safe dose calculations
         let maxPerfumeDosage = null;
@@ -1441,7 +1441,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
 
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(59, 130, 246); // Primary accent
-        doc.text(maxDoseFormatted, margin + 70, y + 14);
+        doc.text(maxDoseFormatted, margin + 100, y + 14);
         y += 26;
 
         // --- Declared Allergens Table ---
