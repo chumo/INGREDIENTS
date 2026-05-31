@@ -89,7 +89,10 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             product_name_label: "Nombre del Producto",
             rinse_off_label: "¿Producto para aclarado?",
             dose_percent_label: "Dosis %",
-            delete_column_tooltip: "Eliminar este componente"
+            delete_column_tooltip: "Eliminar este componente",
+            analysis_results_title: "Resultados del Análisis",
+            sort_below_one_label: "Ordenar < 1% alfabéticamente",
+            declared_allergens_heading: "Alérgenos a Declarar en Etiqueta"
         },
         en: {
             header_app_name: "LABEL REGULATORY",
@@ -180,7 +183,10 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             product_name_label: "Product Name",
             rinse_off_label: "Rinse-off product?",
             dose_percent_label: "Dose %",
-            delete_column_tooltip: "Delete this component"
+            delete_column_tooltip: "Delete this component",
+            analysis_results_title: "Analysis Results",
+            sort_below_one_label: "Sort < 1% alphabetically",
+            declared_allergens_heading: "Allergens to Declare on Label"
         }
     };
 
@@ -248,17 +254,22 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     const copyConcentrationsBtn = document.getElementById('copy-concentrations-btn');
     const allergenTableBody = document.getElementById('allergen-table-body');
     const allergenTableHeader = document.getElementById('allergen-table-header');
+    const allergenSortSwitch = document.getElementById('allergen-sort-switch');
+    const downloadAllergenPdfBtn = document.getElementById('download-allergen-pdf-btn');
+    const allergenMaxDoseInfo = document.getElementById('allergen-max-dose-info');
+    const declaredAllergensList = document.getElementById('declared-allergens-list');
     
     // Allergen tab State
     let allergenBrand = '';
     let allergenProductName = '';
     let allergenRinseOff = false;
+    let allergenSortAlphabeticalBelowOne = false;
     let perfumeComponents = [
         {
             id: 'A',
             title: 'COMPONENT A',
             fileName: '',
-            dosePercent: 100,
+            dosePercent: 0,
             productCode: '',
             printingDate: '',
             extraIncis: [],
@@ -296,6 +307,14 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             if (updatedLabelItems.length > 0 && typeof window.runValidation === 'function') {
                 window.runValidation(updatedLabelItems);
             }
+        }
+
+        // Re-run allergen compliance and render to update translations
+        if (typeof calculateAllergenCompliance === 'function') {
+            calculateAllergenCompliance();
+        }
+        if (typeof renderAllergenTable === 'function') {
+            renderAllergenTable();
         }
     };
 
@@ -818,16 +837,30 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     if (allergenBrandInput) {
         allergenBrandInput.addEventListener('input', (e) => {
             allergenBrand = e.target.value;
+            calculateAllergenCompliance();
         });
     }
     if (allergenProductNameInput) {
         allergenProductNameInput.addEventListener('input', (e) => {
             allergenProductName = e.target.value;
+            calculateAllergenCompliance();
         });
     }
     if (allergenRinseOffInput) {
         allergenRinseOffInput.addEventListener('change', (e) => {
             allergenRinseOff = e.target.checked;
+            calculateAllergenCompliance();
+        });
+    }
+    if (allergenSortSwitch) {
+        allergenSortSwitch.addEventListener('change', (e) => {
+            allergenSortAlphabeticalBelowOne = e.target.checked;
+            calculateAllergenCompliance();
+        });
+    }
+    if (downloadAllergenPdfBtn) {
+        downloadAllergenPdfBtn.addEventListener('click', () => {
+            generateAllergenPdfReport();
         });
     }
 
@@ -980,6 +1013,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             doseInput.step = 'any';
             doseInput.addEventListener('input', (e) => {
                 comp.dosePercent = parseFloat(e.target.value) || 0;
+                calculateAllergenCompliance();
             });
             doseWrapper.appendChild(doseInput);
             doseWrapper.appendChild(document.createTextNode('%'));
@@ -999,6 +1033,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             codeInput.placeholder = '—';
             codeInput.addEventListener('input', (e) => {
                 comp.productCode = e.target.value;
+                calculateAllergenCompliance();
             });
             codeRow.appendChild(codeInput);
             
@@ -1016,6 +1051,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             dateInput.placeholder = '—';
             dateInput.addEventListener('input', (e) => {
                 comp.printingDate = e.target.value;
+                calculateAllergenCompliance();
             });
             dateRow.appendChild(dateInput);
             
@@ -1085,6 +1121,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                     const val = parseConcentration(e.target.textContent);
                     comp.concentrations[normInci] = val;
                     e.target.textContent = val;
+                    calculateAllergenCompliance();
                 });
                 
                 row.appendChild(tdVal);
@@ -1096,6 +1133,399 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             
             allergenTableBody.appendChild(row);
         });
+
+        // Run compliance calculations
+        calculateAllergenCompliance();
+    }
+
+    function calculateAllergenCompliance() {
+        if (typeof allergens === 'undefined') return;
+        
+        const threshold = allergenRinseOff ? 0.01 : 0.001;
+        let totalPerfumeDose = 0;
+        perfumeComponents.forEach(comp => {
+            totalPerfumeDose += (comp.dosePercent || 0);
+        });
+        
+        const productAllergens = [];
+        
+        allergens.forEach(item => {
+            const normInci = normalizeIngredient(item.INCI);
+            let productConc = 0;
+            
+            perfumeComponents.forEach(comp => {
+                const compConc = comp.concentrations[normInci] !== undefined ? comp.concentrations[normInci] : 0;
+                productConc += compConc * ((comp.dosePercent || 0) / 100);
+            });
+            
+            if (productConc > threshold) {
+                productAllergens.push({
+                    inci: item.INCI,
+                    concentration: productConc
+                });
+            }
+        });
+        
+        // Sort high >= 1% and low < 1%
+        const highConc = productAllergens.filter(a => a.concentration >= 1.0);
+        const lowConc = productAllergens.filter(a => a.concentration < 1.0);
+        
+        highConc.sort((a, b) => b.concentration - a.concentration);
+        
+        if (allergenSortAlphabeticalBelowOne) {
+            lowConc.sort((a, b) => a.inci.localeCompare(b.inci));
+        } else {
+            lowConc.sort((a, b) => b.concentration - a.concentration);
+        }
+        
+        const declaredList = [...highConc, ...lowConc];
+        
+        if (declaredAllergensList) {
+            declaredAllergensList.innerHTML = '';
+            if (declaredList.length === 0) {
+                const emptyMsg = document.createElement('div');
+                emptyMsg.className = 'no-allergens-msg';
+                emptyMsg.textContent = currentLanguage === 'es' ? 'No hay alérgenos que declarar' : 'No allergens to declare';
+                declaredAllergensList.appendChild(emptyMsg);
+            } else {
+                declaredList.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'declared-allergen-item';
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'allergen-inci';
+                    nameSpan.textContent = item.inci;
+                    
+                    const badgeSpan = document.createElement('span');
+                    const isHigh = item.concentration >= 1.0;
+                    badgeSpan.className = `allergen-concentration-badge ${isHigh ? 'high' : 'low'}`;
+                    badgeSpan.textContent = item.concentration.toFixed(4).replace(/\.?0+$/, '') + '%';
+                    
+                    itemDiv.appendChild(nameSpan);
+                    itemDiv.appendChild(badgeSpan);
+                    declaredAllergensList.appendChild(itemDiv);
+                });
+            }
+        }
+        
+        // Calculate max safe perfume dosage before any single allergen triggers labeling.
+        let maxPerfumeDosage = null;
+        if (totalPerfumeDose > 0) {
+            let minLimit = Infinity;
+            allergens.forEach(item => {
+                const normInci = normalizeIngredient(item.INCI);
+                let productConc = 0;
+                perfumeComponents.forEach(comp => {
+                    const compConc = comp.concentrations[normInci] !== undefined ? comp.concentrations[normInci] : 0;
+                    productConc += compConc * ((comp.dosePercent || 0) / 100);
+                });
+                
+                if (productConc > 0) {
+                    const limit = (threshold * totalPerfumeDose) / productConc;
+                    if (limit < minLimit) {
+                        minLimit = limit;
+                    }
+                }
+            });
+            if (minLimit !== Infinity) {
+                maxPerfumeDosage = minLimit;
+            }
+        }
+        
+        if (allergenMaxDoseInfo) {
+            if (maxPerfumeDosage === null) {
+                const text = currentLanguage === 'es'
+                    ? 'Dosis máxima de perfume permitida en producto antes de que sea obligatorio declarar alérgenos: <strong>Sin límite</strong>'
+                    : 'Maximum perfume dosage allowed in the product before any single allergen triggers labeling: <strong>No limit</strong>';
+                allergenMaxDoseInfo.innerHTML = text;
+            } else {
+                const formattedDose = maxPerfumeDosage.toFixed(4).replace(/\.?0+$/, '') + '%';
+                const text = currentLanguage === 'es'
+                    ? `Dosis máxima de perfume permitida en producto antes de que sea obligatorio declarar alérgenos: <strong>${formattedDose}</strong>`
+                    : `Maximum perfume dosage allowed in the product before any single allergen triggers labeling: <strong>${formattedDose}</strong>`;
+                allergenMaxDoseInfo.innerHTML = text;
+            }
+        }
+    }
+
+    function generateAllergenPdfReport() {
+        var jsPDFClass = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+        if (!jsPDFClass) {
+            alert(translations[currentLanguage].error_pdf_lib || "PDF library not loaded");
+            return;
+        }
+
+        var doc = new jsPDFClass({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        var pageW = doc.internal.pageSize.getWidth();
+        var pageH = doc.internal.pageSize.getHeight();
+        var margin = 15;
+        var contentW = pageW - margin * 2;
+        var y = margin;
+
+        function checkPage(needed) {
+            if (y + needed > pageH - margin) {
+                doc.addPage();
+                y = margin;
+            }
+        }
+
+        // --- Document Title ---
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(18);
+        doc.setTextColor(59, 130, 246); // Primary accent
+        const mainTitle = currentLanguage === 'es' ? 'INFORME DE ALÉRGENOS' : 'ALLERGEN COMPLIANCE REPORT';
+        doc.text(mainTitle, pageW / 2, y + 7, { align: 'center' });
+        y += 12;
+
+        // --- Subtitle (Generated Date) ---
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        const dateText = (currentLanguage === 'es' ? 'Generado el ' : 'Generated on ') + new Date().toLocaleString(currentLanguage === 'es' ? 'es-ES' : 'en-US');
+        doc.text(dateText, pageW / 2, y, { align: 'center' });
+        y += 8;
+
+        // Separator line
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.3);
+        doc.line(margin, y, pageW - margin, y);
+        y += 8;
+
+        // --- Product / Brand Metadata ---
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(30, 41, 59);
+        doc.text(currentLanguage === 'es' ? 'Datos del Producto' : 'Product Information', margin, y);
+        y += 6;
+
+        doc.setFontSize(9);
+        // Brand
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(100, 116, 139);
+        doc.text((currentLanguage === 'es' ? 'Marca:' : 'Brand:'), margin, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(30, 41, 59);
+        doc.text(allergenBrand || '—', margin + 35, y);
+        y += 6;
+
+        // Product Name
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(100, 116, 139);
+        doc.text((currentLanguage === 'es' ? 'Nombre del Producto:' : 'Product Name:'), margin, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(30, 41, 59);
+        doc.text(allergenProductName || '—', margin + 35, y);
+        y += 6;
+
+        // Product Type
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(100, 116, 139);
+        doc.text((currentLanguage === 'es' ? 'Tipo de Producto:' : 'Product Type:'), margin, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(30, 41, 59);
+        const typeText = allergenRinseOff 
+            ? (currentLanguage === 'es' ? 'Con aclarado (Rinse-off)' : 'Rinse-off')
+            : (currentLanguage === 'es' ? 'Sin aclarado (Leave-on)' : 'Leave-on');
+        doc.text(typeText, margin + 35, y);
+        y += 10;
+
+        doc.setDrawColor(226, 232, 240);
+        doc.line(margin, y, pageW - margin, y);
+        y += 8;
+
+        // --- Fragrance Components Table ---
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(30, 41, 59);
+        doc.text(currentLanguage === 'es' ? 'Composición de la Fragancia' : 'Fragrance Components', margin, y);
+        y += 6;
+
+        // Table Header
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margin, y, contentW, 7, 'F');
+        doc.setDrawColor(226, 232, 240);
+        doc.line(margin, y, pageW - margin, y);
+        doc.line(margin, y + 7, pageW - margin, y + 7);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(100, 116, 139);
+        
+        doc.text(currentLanguage === 'es' ? 'Componente' : 'Component', margin + 2, y + 5);
+        doc.text(currentLanguage === 'es' ? 'Código de Producto' : 'Product Code', margin + 45, y + 5);
+        doc.text(currentLanguage === 'es' ? 'Fecha Impresión' : 'Printing Date', margin + 95, y + 5);
+        doc.text(currentLanguage === 'es' ? 'Dosis en Producto' : 'Dose in Product', margin + 140, y + 5);
+        
+        y += 7;
+
+        let totalDose = 0;
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(51, 65, 85);
+        
+        perfumeComponents.forEach(comp => {
+            checkPage(12);
+            totalDose += (comp.dosePercent || 0);
+            
+            doc.text(comp.title || '—', margin + 2, y + 5);
+            doc.text(comp.productCode || '—', margin + 45, y + 5);
+            doc.text(comp.printingDate || '—', margin + 95, y + 5);
+            doc.text((comp.dosePercent || 0).toFixed(4).replace(/\.?0+$/, '') + '%', margin + 140, y + 5);
+            
+            y += 7;
+            doc.line(margin, y, pageW - margin, y);
+        });
+
+        // Add Total Row
+        checkPage(10);
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margin, y, contentW, 7, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.text(currentLanguage === 'es' ? 'DOSIS TOTAL DE PERFUME' : 'TOTAL PERFUME DOSAGE', margin + 2, y + 5);
+        doc.text(totalDose.toFixed(4).replace(/\.?0+$/, '') + '%', margin + 140, y + 5);
+        y += 7;
+        doc.line(margin, y, pageW - margin, y);
+        y += 10;
+
+        // --- Compliance Summary ---
+        checkPage(30);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(30, 41, 59);
+        doc.text(currentLanguage === 'es' ? 'Resumen de Cumplimiento' : 'Compliance Summary', margin, y);
+        y += 6;
+
+        const threshold = allergenRinseOff ? 0.01 : 0.001;
+        
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margin, y, contentW, 20, 'F');
+        doc.setDrawColor(226, 232, 240);
+        doc.rect(margin, y, contentW, 20, 'D');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(currentLanguage === 'es' ? 'Límite de Declaración Aplicado:' : 'Declaration Limit Applied:', margin + 4, y + 6);
+        doc.text(currentLanguage === 'es' ? 'Dosis Máxima de Perfume Permitida:' : 'Max Allowed Perfume Dosage:', margin + 4, y + 14);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(30, 41, 59);
+        doc.text(threshold + '%', margin + 70, y + 6);
+
+        // Max safe dose calculations
+        let maxPerfumeDosage = null;
+        if (totalDose > 0) {
+            let minLimit = Infinity;
+            allergens.forEach(item => {
+                const normInci = normalizeIngredient(item.INCI);
+                let productConc = 0;
+                perfumeComponents.forEach(comp => {
+                    const compConc = comp.concentrations[normInci] !== undefined ? comp.concentrations[normInci] : 0;
+                    productConc += compConc * ((comp.dosePercent || 0) / 100);
+                });
+                
+                if (productConc > 0) {
+                    const limit = (threshold * totalDose) / productConc;
+                    if (limit < minLimit) {
+                        minLimit = limit;
+                    }
+                }
+            });
+            if (minLimit !== Infinity) {
+                maxPerfumeDosage = minLimit;
+            }
+        }
+
+        const maxDoseFormatted = maxPerfumeDosage === null 
+            ? (currentLanguage === 'es' ? 'Sin límite' : 'No limit') 
+            : maxPerfumeDosage.toFixed(4).replace(/\.?0+$/, '') + '%';
+
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(59, 130, 246); // Primary accent
+        doc.text(maxDoseFormatted, margin + 70, y + 14);
+        y += 26;
+
+        // --- Declared Allergens Table ---
+        checkPage(20);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(30, 41, 59);
+        doc.text(currentLanguage === 'es' ? 'Alérgenos a Declarar en Etiqueta' : 'Allergens to Declare on Label', margin, y);
+        y += 6;
+
+        const productAllergens = [];
+        allergens.forEach(item => {
+            const normInci = normalizeIngredient(item.INCI);
+            let productConc = 0;
+            perfumeComponents.forEach(comp => {
+                const compConc = comp.concentrations[normInci] !== undefined ? comp.concentrations[normInci] : 0;
+                productConc += compConc * ((comp.dosePercent || 0) / 100);
+            });
+            if (productConc > threshold) {
+                productAllergens.push({
+                    inci: item.INCI,
+                    concentration: productConc
+                });
+            }
+        });
+
+        const highConc = productAllergens.filter(a => a.concentration >= 1.0);
+        const lowConc = productAllergens.filter(a => a.concentration < 1.0);
+        highConc.sort((a, b) => b.concentration - a.concentration);
+        if (allergenSortAlphabeticalBelowOne) {
+            lowConc.sort((a, b) => a.inci.localeCompare(b.inci));
+        } else {
+            lowConc.sort((a, b) => b.concentration - a.concentration);
+        }
+        const declaredList = [...highConc, ...lowConc];
+
+        if (declaredList.length === 0) {
+            doc.setFillColor(240, 253, 244); // light green bg
+            doc.setDrawColor(187, 247, 208); // light green border
+            doc.rect(margin, y, contentW, 10, 'FD');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(22, 101, 52); // green text
+            doc.text(currentLanguage === 'es' ? 'No hay alérgenos que declarar en la etiqueta.' : 'No allergens to declare on the label.', margin + 4, y + 6.5);
+            y += 15;
+        } else {
+            // Table Header
+            doc.setFillColor(248, 250, 252);
+            doc.rect(margin, y, contentW, 7, 'F');
+            doc.setDrawColor(226, 232, 240);
+            doc.line(margin, y, pageW - margin, y);
+            doc.line(margin, y + 7, pageW - margin, y + 7);
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8.5);
+            doc.setTextColor(100, 116, 139);
+            doc.text('INCI', margin + 4, y + 5);
+            doc.text(currentLanguage === 'es' ? 'Concentración en Producto' : 'Concentration in Product', margin + 110, y + 5);
+            y += 7;
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.5);
+            
+            declaredList.forEach(item => {
+                checkPage(8);
+                doc.setTextColor(30, 41, 59);
+                doc.text(item.inci, margin + 4, y + 5);
+                
+                if (item.concentration >= 1.0) {
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(239, 68, 68); // Red
+                } else {
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(71, 85, 105);
+                }
+                
+                doc.text(item.concentration.toFixed(4).replace(/\.?0+$/, '') + '%', margin + 110, y + 5);
+                y += 7;
+                doc.line(margin, y, pageW - margin, y);
+            });
+        }
+
+        const filename = (allergenProductName || 'allergen').toLowerCase().replace(/[^a-z0-9]/g, '-') + '-analysis-report.pdf';
+        doc.save(filename);
     }
 
     // Helper functions
@@ -1105,7 +1535,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             id: nextId,
             title: `COMPONENT ${nextId}`,
             fileName: '',
-            dosePercent: perfumeComponents.length === 0 ? 100 : 50,
+            dosePercent: 0,
             productCode: '',
             printingDate: '',
             extraIncis: [],
