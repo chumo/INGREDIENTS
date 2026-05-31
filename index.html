@@ -75,61 +75,63 @@
             </header>
             
             <div class="allergen-container-new">
-                <section class="card allergen-top-panel">
-                    <div class="allergen-top-panel-inputs">
-                        <div class="input-group">
-                            <label for="allergen-brand" data-i18n="brand_label">Marca</label>
-                            <input type="text" id="allergen-brand" placeholder="Ej. IBERCHEM">
+                <div class="allergen-left-col">
+                    <section class="card allergen-top-panel">
+                        <div class="allergen-top-panel-inputs">
+                            <div class="input-group">
+                                <label for="allergen-brand" data-i18n="brand_label">Marca</label>
+                                <input type="text" id="allergen-brand" placeholder="Ej. IBERCHEM">
+                            </div>
+                            <div class="input-group">
+                                <label for="allergen-product-name" data-i18n="product_name_label">Nombre del Producto</label>
+                                <input type="text" id="allergen-product-name" placeholder="Ej. Fragancia Eweent">
+                            </div>
+                            <div class="input-group-checkbox">
+                                <input type="checkbox" id="allergen-rinse-off">
+                                <label for="allergen-rinse-off" data-i18n="rinse_off_label">¿Producto para aclarado?</label>
+                            </div>
                         </div>
-                        <div class="input-group">
-                            <label for="allergen-product-name" data-i18n="product_name_label">Nombre del Producto</label>
-                            <input type="text" id="allergen-product-name" placeholder="Ej. Fragancia Eweent">
+                    </section>
+                    
+                    <section class="card allergen-results-panel">
+                        <div class="results-header">
+                            <h2 data-i18n="analysis_results_title">Resultados del Análisis</h2>
+                            <div class="results-toolbar">
+                                <button class="btn btn-primary btn-sm" id="download-allergen-pdf-btn">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: text-bottom;">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    </svg>
+                                    <span data-i18n="download_pdf">Descargar PDF</span>
+                                </button>
+                            </div>
                         </div>
-                        <div class="input-group-checkbox">
-                            <input type="checkbox" id="allergen-rinse-off">
-                            <label for="allergen-rinse-off" data-i18n="rinse_off_label">¿Producto para aclarado?</label>
+                        
+                        <div class="results-summary">
+                            <div class="max-dose-info" id="allergen-max-dose-info">
+                                <!-- Informative text about max perfume dose before labeling -->
+                            </div>
                         </div>
-                    </div>
-                </section>
-                
-                <section class="card allergen-results-panel" style="margin-bottom: 1.5rem;">
-                    <div class="results-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
-                        <h2 style="margin: 0; font-size: 1.3rem;" data-i18n="analysis_results_title">Resultados del Análisis</h2>
-                        <div class="results-toolbar" style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
-                            <div class="sorting-switch-container" style="display: flex; align-items: center; gap: 0.5rem; user-select: none;">
-                                <span class="switch-label" style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="sort_below_one_label">Ordenar < 1% alfabéticamente</span>
+                        
+                        <div class="declared-allergens-section">
+                            <h3 data-i18n="declared_allergens_heading">Alérgenos a Declarar en Etiqueta</h3>
+                            <div class="sorting-switch-container">
+                                <span class="switch-label" data-i18n="sort_below_one_label">Ordenar < 1% alfabéticamente</span>
                                 <label class="switch">
                                     <input type="checkbox" id="allergen-sort-switch">
                                     <span class="slider round"></span>
                                 </label>
                             </div>
-                            <button class="btn btn-primary btn-sm" id="download-allergen-pdf-btn">
-                                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: text-bottom;">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="7 10 12 15 17 10"></polyline>
-                                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                                </svg>
-                                <span data-i18n="download_pdf">Descargar PDF</span>
-                            </button>
+                            <div class="declared-allergens-list" id="declared-allergens-list">
+                                <!-- List of declared allergens with concentrations -->
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="results-summary" style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(30, 41, 59, 0.4); border-radius: 8px; border: 1px solid var(--border-color);">
-                        <div class="max-dose-info" id="allergen-max-dose-info" style="font-size: 0.95rem; font-weight: 500; color: var(--accent); line-height: 1.4;">
-                            <!-- Informative text about max perfume dose before labeling -->
-                        </div>
-                    </div>
-                    
-                    <div class="declared-allergens-section">
-                        <h3 style="font-size: 1rem; color: var(--text-muted); margin-bottom: 0.75rem;" data-i18n="declared_allergens_heading">Alérgenos a Declarar en Etiqueta</h3>
-                        <div class="declared-allergens-list" id="declared-allergens-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 250px; overflow-y: auto; padding-right: 0.5rem;">
-                            <!-- List of declared allergens with concentrations -->
-                        </div>
-                    </div>
-                </section>
+                    </section>
+                </div>
                 
                 <section class="card table-card allergen-table-card">
-                    <div class="table-toolbar" style="display: flex; justify-content: flex-end; padding: 1rem 1rem 0; background: transparent; border: none; gap: 1rem;">
+                    <div class="table-toolbar">
                         <button class="btn btn-secondary btn-sm" id="copy-concentrations-btn">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;">
                                 <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
@@ -137,7 +139,7 @@
                             <span data-i18n="copy_to_clipboard">Copiar al Portapapeles</span>
                         </button>
                     </div>
-                    <div class="table-container" style="padding: 1rem;">
+                    <div class="table-container">
                         <table id="allergen-table">
                             <thead>
                                 <tr id="allergen-table-header">

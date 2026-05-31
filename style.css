@@ -970,6 +970,14 @@ input[type="number"]:focus {
 /* Allergen Extractor Layout */
 /* Allergen Extractor Redesigned Layout */
 .allergen-container-new {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 1.5rem;
+    width: 100%;
+    align-items: stretch;
+}
+
+.allergen-left-col {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
@@ -982,23 +990,22 @@ input[type="number"]:focus {
 
 .allergen-top-panel-inputs {
     display: flex;
-    gap: 1.5rem;
-    align-items: flex-end;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 1.25rem;
+    align-items: stretch;
 }
 
 .allergen-top-panel-inputs .input-group {
-    flex: 1;
-    min-width: 240px;
+    width: 100%;
 }
 
 .allergen-top-panel-inputs .input-group-checkbox {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    height: 42px; /* Aligns with input heights */
+    gap: 0.75rem;
     user-select: none;
     cursor: pointer;
+    padding: 0.25rem 0;
 }
 
 .allergen-top-panel-inputs .input-group-checkbox input {
@@ -1014,13 +1021,123 @@ input[type="number"]:focus {
     cursor: pointer;
 }
 
-.allergen-table-card {
-    padding: 1rem 0 0 0;
-    overflow: hidden;
-    height: calc(100vh - 350px);
-    min-height: 500px;
+.allergen-results-panel {
+    padding: 1.5rem;
+    flex-grow: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.results-header h2 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.results-toolbar {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.sorting-switch-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    user-select: none;
+    padding: 0.6rem 0.8rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+}
+
+.sorting-switch-container .switch-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.results-toolbar #download-allergen-pdf-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.results-summary {
+    margin-bottom: 1.25rem;
+    padding: 1rem;
+    background: rgba(30, 41, 59, 0.4);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.max-dose-info {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--accent);
+    line-height: 1.4;
+}
+
+.declared-allergens-section {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 0;
+}
+
+.declared-allergens-section h3 {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+
+.declared-allergens-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex-grow: 1;
+    min-height: 180px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.allergen-table-card {
+    padding: 0;
+    overflow: hidden;
+    height: calc(100vh - 240px);
+    min-height: 600px;
+    display: flex;
+    flex-direction: column;
+}
+
+.allergen-table-card .table-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 1rem 1rem 0;
+    background: transparent;
+    border: none;
+    gap: 1rem;
+}
+
+.allergen-table-card .table-container {
+    padding: 1rem;
+    overflow: auto;
+    flex-grow: 1;
 }
 
 .component-header-panel {
@@ -1324,7 +1441,43 @@ input[type="number"]:focus {
     font-weight: 500;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
+    .allergen-container-new {
+        grid-template-columns: 1fr;
+    }
+    .allergen-left-col {
+        height: auto;
+        min-height: auto;
+    }
+    .allergen-results-panel {
+        flex-grow: 0;
+    }
+    .declared-allergens-section {
+        flex-grow: 0;
+    }
+    .declared-allergens-list {
+        max-height: 280px;
+    }
+    .allergen-top-panel-inputs {
+        flex-direction: row;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    }
+    .allergen-top-panel-inputs .input-group {
+        flex: 1;
+        min-width: 240px;
+    }
+    .allergen-top-panel-inputs .input-group-checkbox {
+        height: 42px;
+    }
+    .allergen-table-card {
+        height: auto;
+        min-height: 500px;
+    }
+}
+
+@media (max-width: 768px) {
     .allergen-top-panel-inputs {
         flex-direction: column;
         align-items: stretch;
