@@ -1597,3 +1597,16 @@ input:checked + .slider:before {
     border-radius: 6px;
 }
 
+/* Required inputs style: subtle red border */
+#allergen-brand,
+#allergen-product-name,
+.component-dose-wrapper input[type="number"] {
+    border: 2px solid rgba(239, 68, 68, 0.4);
+}
+
+#allergen-brand:focus,
+#allergen-product-name:focus,
+.component-dose-wrapper input[type="number"]:focus {
+    border-color: rgba(239, 68, 68, 0.85);
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
+}
