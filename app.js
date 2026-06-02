@@ -1363,15 +1363,48 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         doc.setTextColor(51, 65, 85);
 
         perfumeComponents.forEach(comp => {
-            checkPage(12);
+            const hasFile = !!comp.fileName;
+            let splitFn = [];
+            let extraHeight = 0;
+            if (hasFile) {
+                doc.setFont('helvetica', 'italic');
+                doc.setFontSize(7);
+                splitFn = doc.splitTextToSize(comp.fileName, 40); // wrap to 40mm
+                extraHeight = (splitFn.length - 1) * 3; // each extra line is 3mm
+            }
+
+            const rowHeight = hasFile ? (11 + extraHeight) : 7;
+            checkPage(rowHeight + 5);
             totalDose += (comp.dosePercent || 0);
 
-            doc.text(comp.title || '—', margin + 2, y + 5);
-            doc.text(comp.productCode || '—', margin + 45, y + 5);
-            doc.text(comp.printingDate || '—', margin + 95, y + 5);
-            doc.text((comp.dosePercent || 0).toFixed(4).replace(/\.?0+$/, '') + '%', margin + 140, y + 5);
+            if (hasFile) {
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8.5);
+                doc.setTextColor(51, 65, 85);
+                doc.text(comp.title || '—', margin + 2, y + 4.5);
 
-            y += 7;
+                doc.setFont('helvetica', 'italic');
+                doc.setFontSize(7);
+                doc.setTextColor(100, 116, 139);
+                doc.text(splitFn, margin + 2, y + 8.5);
+            } else {
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8.5);
+                doc.setTextColor(51, 65, 85);
+                doc.text(comp.title || '—', margin + 2, y + 5);
+            }
+
+            // Restore font/color for the other columns
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.5);
+            doc.setTextColor(51, 65, 85);
+
+            const otherY = y + (hasFile ? (6 + extraHeight / 2) : 5);
+            doc.text(comp.productCode || '—', margin + 45, otherY);
+            doc.text(comp.printingDate || '—', margin + 95, otherY);
+            doc.text((comp.dosePercent || 0).toFixed(4).replace(/\.?0+$/, '') + '%', margin + 140, otherY);
+
+            y += rowHeight;
             doc.line(margin, y, pageW - margin, y);
         });
 
@@ -1446,11 +1479,6 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
 
         // --- Declared Allergens Table ---
         checkPage(20);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(11);
-        doc.setTextColor(30, 41, 59);
-        doc.text(currentLanguage === 'es' ? 'Alérgenos a Declarar en Etiqueta' : 'Allergens to Declare on Label', margin, y);
-        y += 6;
 
         const productAllergens = [];
         allergens.forEach(item => {
@@ -1477,6 +1505,15 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             lowConc.sort((a, b) => b.concentration - a.concentration);
         }
         const declaredList = [...highConc, ...lowConc];
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(30, 41, 59);
+        const titleText = currentLanguage === 'es'
+            ? `Alérgenos a Declarar en Etiqueta (Total: ${declaredList.length})`
+            : `Allergens to Declare on Label (Total: ${declaredList.length})`;
+        doc.text(titleText, margin, y);
+        y += 6;
 
         if (declaredList.length === 0) {
             doc.setFillColor(240, 253, 244); // light green bg
