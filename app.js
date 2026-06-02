@@ -1404,8 +1404,8 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(8.5);
         doc.setTextColor(100, 116, 139);
-        doc.text(currentLanguage === 'es' ? 'Límite de Declaración Aplicado:' : 'Declaration Limit Applied:', margin + 4, y + 6);
-        doc.text(currentLanguage === 'es' ? 'Dosis Máxima de Perfume Permitida sin declaración de alérgenos:' : 'Max Allowed Perfume Dosage before labeling allergens:', margin + 4, y + 14);
+        doc.text(currentLanguage === 'es' ? 'Límite de declaración aplicado:' : 'Declaration limit applied:', margin + 4, y + 6);
+        doc.text(currentLanguage === 'es' ? 'Dosis máxima de perfume sin etiquetado de alérgenos:' : 'Maximum dosage of perfume without allergen labelling:', margin + 4, y + 14);
 
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(30, 41, 59);
