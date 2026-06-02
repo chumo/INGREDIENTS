@@ -1228,7 +1228,9 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 });
 
                 if (productConc > 0) {
-                    const limit = (threshold * totalPerfumeDose) / productConc;
+                    let limit = (threshold * totalPerfumeDose) / productConc;
+                    // round to the 4th decimal place for consistency with other parts of the app
+                    limit = Math.floor(limit * 10000) / 10000;
                     if (limit < minLimit) {
                         minLimit = limit;
                     }
@@ -1464,7 +1466,8 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 });
 
                 if (productConc > 0) {
-                    const limit = (threshold * totalDose) / productConc;
+                    let limit = (threshold * totalDose) / productConc;
+                    limit = Math.floor(limit * 10000) / 10000;
                     if (limit < minLimit) {
                         minLimit = limit;
                     }
