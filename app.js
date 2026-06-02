@@ -258,6 +258,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     const downloadAllergenPdfBtn = document.getElementById('download-allergen-pdf-btn');
     const allergenMaxDoseInfo = document.getElementById('allergen-max-dose-info');
     const declaredAllergensList = document.getElementById('declared-allergens-list');
+    const declaredAllergensHeading = document.getElementById('declared-allergens-heading');
 
     // Allergen tab State
     let allergenBrand = '';
@@ -1179,6 +1180,12 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         }
 
         const declaredList = [...highConc, ...lowConc];
+
+        if (declaredAllergensHeading) {
+            declaredAllergensHeading.textContent = currentLanguage === 'es'
+                ? `Alérgenos a Declarar en Etiqueta (Total: ${declaredList.length})`
+                : `Allergens to Declare on Label (Total: ${declaredList.length})`;
+        }
 
         if (declaredAllergensList) {
             declaredAllergensList.innerHTML = '';
