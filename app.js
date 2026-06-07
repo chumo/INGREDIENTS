@@ -849,14 +849,14 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 window._templateImages = null;
             }
 
-            templatePdfName.textContent = file.name;
+            templatePdfName.textContent = file.name.normalize('NFC');
             const plural = currentLanguage === 'es' ? (pageCount !== 1 ? 's' : '') : (pageCount !== 1 ? 's' : '');
             templatePdfMeta.textContent = translations[currentLanguage].pdf_meta
                 .replace('{pageCount}', pageCount)
                 .replace('{plural}', plural)
                 .replace('{size}', (file.size / 1024).toFixed(0))
                 .replace('{charCount}', text.length.toLocaleString()) + (isImageBased ? " (OCR Mode)" : "");
-            templateFileInfo.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            templateFileInfo.textContent = `${file.name.normalize('NFC')} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
             templateUploadContent.classList.add('hidden');
             templatePreviewContainer.classList.remove('hidden');
             validateState();
@@ -871,7 +871,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     setupDropZone(labelDropZone, labelFileInput, async (file) => {
         try {
             setProcessingUI(true, translations[currentLanguage].processing_label);
-            labelFileInfo.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            labelFileInfo.textContent = `${file.name.normalize('NFC')} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
             let base64;
             if (file.type === 'application/pdf') {
                 base64 = await renderPdfToImage(file);
@@ -1329,6 +1329,26 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         }
 
         var doc = new jsPDFClass({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+        // Normalize text inputs to NFC to avoid jsPDF spacing and character issues with NFD combining accents
+        const originalText = doc.text;
+        doc.text = function(text, x, y, options) {
+            if (typeof text === 'string') {
+                text = text.normalize('NFC');
+            } else if (Array.isArray(text)) {
+                text = text.map(t => typeof t === 'string' ? t.normalize('NFC') : t);
+            }
+            return originalText.call(doc, text, x, y, options);
+        };
+
+        const originalSplit = doc.splitTextToSize;
+        doc.splitTextToSize = function(text, size, options) {
+            if (typeof text === 'string') {
+                text = text.normalize('NFC');
+            }
+            return originalSplit.call(doc, text, size, options);
+        };
+
         var pageW = doc.internal.pageSize.getWidth();
         var pageH = doc.internal.pageSize.getHeight();
         var margin = 15;
@@ -1664,7 +1684,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
 
         const comp = perfumeComponents[componentIndex];
         comp.isLoading = true;
-        comp.fileName = file.name;
+        comp.fileName = file.name.normalize('NFC');
         renderAllergenTable();
 
         try {
@@ -2420,6 +2440,26 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         if (!jsPDFClass) { alert(translations[currentLanguage].error_pdf_lib); return Promise.resolve(); }
 
         var doc = new jsPDFClass({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+        // Normalize text inputs to NFC to avoid jsPDF spacing and character issues with NFD combining accents
+        const originalText = doc.text;
+        doc.text = function(text, x, y, options) {
+            if (typeof text === 'string') {
+                text = text.normalize('NFC');
+            } else if (Array.isArray(text)) {
+                text = text.map(t => typeof t === 'string' ? t.normalize('NFC') : t);
+            }
+            return originalText.call(doc, text, x, y, options);
+        };
+
+        const originalSplit = doc.splitTextToSize;
+        doc.splitTextToSize = function(text, size, options) {
+            if (typeof text === 'string') {
+                text = text.normalize('NFC');
+            }
+            return originalSplit.call(doc, text, size, options);
+        };
+
         var pageW = doc.internal.pageSize.getWidth();
         var pageH = doc.internal.pageSize.getHeight();
         var margin = 15;
