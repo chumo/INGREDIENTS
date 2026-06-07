@@ -1362,6 +1362,26 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             }
         }
 
+        const currentDate = new Date();
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(currentDate.getFullYear() - 1);
+
+        function checkDateExpired(dateStr) {
+            if (!dateStr || dateStr === '—') return false;
+            const cleanStr = dateStr.trim();
+            let parsedDate = new Date(cleanStr);
+            if (isNaN(parsedDate.getTime())) {
+                const match = cleanStr.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+                if (match) {
+                    const d = parseInt(match[1], 10);
+                    const m = parseInt(match[2], 10) - 1;
+                    const y = parseInt(match[3], 10);
+                    parsedDate = new Date(y, m, d);
+                }
+            }
+            return !isNaN(parsedDate.getTime()) && parsedDate < oneYearAgo;
+        }
+
         // --- Document Title ---
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(18);
@@ -1494,7 +1514,21 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
 
             const otherY = y + (hasFile ? (6 + extraHeight / 2) : 5);
             doc.text(comp.productCode || '—', margin + 45, otherY);
-            doc.text(comp.printingDate || '—', margin + 95, otherY);
+            
+            const dateStr = comp.printingDate || '—';
+            doc.text(dateStr, margin + 95, otherY);
+            
+            const dateIsOld = checkDateExpired(comp.printingDate);
+            if (dateIsOld) {
+                const textWidth = doc.getTextWidth(dateStr);
+                doc.setTextColor(220, 38, 38); // Red color
+                doc.setFont('helvetica', 'bold');
+                doc.text('*', margin + 95 + textWidth + 0.5, otherY);
+                // Restore font & color for other columns
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(51, 65, 85);
+            }
+            
             doc.text((comp.dosePercent || 0).toFixed(4).replace(/\.?0+$/, '') + '%', margin + 140, otherY);
 
             y += rowHeight;
@@ -1510,7 +1544,25 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         doc.text(totalDose.toFixed(4).replace(/\.?0+$/, '') + '%', margin + 140, y + 5);
         y += 7;
         doc.line(margin, y, pageW - margin, y);
-        y += 10;
+
+        // Check if any component printing date is older than 1 year
+        const hasOldComponent = perfumeComponents.some(comp => checkDateExpired(comp.printingDate));
+
+        if (hasOldComponent) {
+            checkPage(15);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8.5);
+            doc.setTextColor(220, 38, 38); // Red color
+            const noteText = currentLanguage === 'es'
+                ? '* Atención: El certificado de alérgenos es demasiado antiguo. Se recomienda utilizar uno más reciente.'
+                : '* Warning: The allergen certificate is too old. It is recommended to use a newer one.';
+            
+            const splitNote = doc.splitTextToSize(noteText, contentW - 4);
+            doc.text(splitNote, margin + 2, y + 5);
+            y += (splitNote.length * 4.5) + 5;
+        } else {
+            y += 10;
+        }
 
         // --- Compliance Summary ---
         checkPage(30);
