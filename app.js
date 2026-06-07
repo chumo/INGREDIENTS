@@ -23,6 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
             processing: "La IA está procesando los documentos...",
             extracted_ingredients: "Ingredientes Extraídos de la Etiqueta",
             edit_instructions: "Edita la lista separada por comas si la IA omitió o alucinó ingredientes. El informe se actualizará automáticamente.",
+            extracted_template_ingredients: "Ingredientes Extraídos de la Plantilla",
+            edit_template_instructions: "Edita la lista separada por comas y porcentajes opcionales si la IA cometió errores.",
+            extracted_label_ingredients: "Ingredientes Extraídos de la Etiqueta",
+            edit_label_instructions: "Edita la lista separada por comas si la IA omitió o alucinó ingredientes.",
             validation_report: "Informe de Validación",
             download_pdf: "Descargar PDF",
             ingredient_mapping: "Mapeo de Ingredientes",
@@ -121,6 +125,10 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             processing: "AI is processing documents...",
             extracted_ingredients: "Extracted Label Ingredients",
             edit_instructions: "Edit the comma-separated list below if the AI missed or hallucinated ingredients. The report will update automatically.",
+            extracted_template_ingredients: "Extracted Template Ingredients",
+            edit_template_instructions: "Edit the comma-separated list and optional percentages if the AI made mistakes.",
+            extracted_label_ingredients: "Extracted Label Ingredients",
+            edit_label_instructions: "Edit the comma-separated list if the AI missed or hallucinated ingredients.",
             validation_report: "Validation Report",
             download_pdf: "Download PDF",
             ingredient_mapping: "Ingredient Mapping",
@@ -251,6 +259,8 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     const resultContent = document.getElementById('result-content');
     const labelTextarea = document.getElementById('label-ingredients-edit');
     const labelBackdrop = document.getElementById('label-ingredients-backdrop');
+    const templateTextarea = document.getElementById('template-ingredients-edit');
+    const templateBackdrop = document.getElementById('template-ingredients-backdrop');
     const modelInfo = document.getElementById('model-info');
     const providerName = document.getElementById('provider-name');
     const modelVersion = document.getElementById('model-version');
@@ -308,17 +318,25 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
     }
 
     function onIngredientsFormatChange() {
-        // 1. Re-format textbox contents if they exist
+        // 1. Re-format template textbox contents
+        if (templateTextarea && templateTextarea.value) {
+            const formattedTemplate = formatIngredientsListText(templateTextarea.value);
+            templateTextarea.value = formattedTemplate;
+            updateIngredientsBackdrop(templateBackdrop, formattedTemplate);
+            templateItems = parseTemplateIngredientsText(formattedTemplate);
+        }
+
+        // 2. Re-format label textbox contents if they exist
         if (labelTextarea && labelTextarea.value) {
-            const formatted = formatIngredientsListText(labelTextarea.value);
-            labelTextarea.value = formatted;
-            updateIngredientsBackdrop(formatted);
+            const formattedLabel = formatIngredientsListText(labelTextarea.value);
+            labelTextarea.value = formattedLabel;
+            updateIngredientsBackdrop(labelBackdrop, formattedLabel);
             
-            const updatedLabelItems = formatted.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            const updatedLabelItems = formattedLabel.split(',').map(s => s.trim()).filter(s => s.length > 0);
             if (typeof runValidation === 'function') {
                 runValidation(updatedLabelItems);
             }
-        } else if (templateItems && templateItems.length > 0) {
+        } else {
             const currentLabelText = labelTextarea ? labelTextarea.value : '';
             const updatedLabelItems = currentLabelText.split(',').map(s => s.trim()).filter(s => s.length > 0);
             if (typeof runValidation === 'function') {
@@ -326,7 +344,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             }
         }
 
-        // 2. Re-render Allergen Table if initialized
+        // 3. Re-render Allergen Table if initialized
         if (typeof renderAllergenTable === 'function') {
             renderAllergenTable();
         }
@@ -398,8 +416,8 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         'rgba(203, 170, 203, 0.4)'
     ];
 
-    function updateIngredientsBackdrop(text) {
-        if (!labelBackdrop) return;
+    function updateIngredientsBackdrop(backdropEl, text) {
+        if (!backdropEl) return;
         const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
         let html = '';
@@ -425,7 +443,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         });
 
         if (text.endsWith('\n')) html += '&nbsp;';
-        labelBackdrop.innerHTML = html;
+        backdropEl.innerHTML = html;
     }
 
     if (labelTextarea && labelBackdrop) {
@@ -435,8 +453,23 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         });
 
         labelTextarea.addEventListener('input', (e) => {
-            updateIngredientsBackdrop(e.target.value);
+            updateIngredientsBackdrop(labelBackdrop, e.target.value);
             const updatedLabelItems = e.target.value.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            runValidation(updatedLabelItems);
+        });
+    }
+
+    if (templateTextarea && templateBackdrop) {
+        templateTextarea.addEventListener('scroll', () => {
+            templateBackdrop.scrollTop = templateTextarea.scrollTop;
+            templateBackdrop.scrollLeft = templateTextarea.scrollLeft;
+        });
+
+        templateTextarea.addEventListener('input', (e) => {
+            updateIngredientsBackdrop(templateBackdrop, e.target.value);
+            templateItems = parseTemplateIngredientsText(e.target.value);
+            const currentLabelText = labelTextarea ? labelTextarea.value : '';
+            const updatedLabelItems = currentLabelText.split(',').map(s => s.trim()).filter(s => s.length > 0);
             runValidation(updatedLabelItems);
         });
     }
@@ -2035,6 +2068,38 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         return str.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
     }
 
+    function parseTemplateIngredientsText(text) {
+        const items = [];
+        if (!text) return items;
+        const parts = text.split(',');
+        parts.forEach(part => {
+            const trimmed = part.trim();
+            if (!trimmed) return;
+
+            // 1. Try matching parentheses: e.g. "WATER (80%)" or "WATER (80)"
+            let match = trimmed.match(/\s*\(\s*(\d+(?:\.\d+)?)\s*%?\s*\)$/);
+            if (match) {
+                const name = trimmed.substring(0, trimmed.length - match[0].length).trim();
+                const percentage = parseFloat(match[1]);
+                items.push({ name, percentage });
+                return;
+            }
+
+            // 2. Try matching percentage sign: e.g. "WATER 80%"
+            match = trimmed.match(/\s+(\d+(?:\.\d+)?)\s*%$/);
+            if (match) {
+                const name = trimmed.substring(0, trimmed.length - match[0].length).trim();
+                const percentage = parseFloat(match[1]);
+                items.push({ name, percentage });
+                return;
+            }
+
+            // 3. Fallback: no percentage specified
+            items.push({ name: trimmed, percentage: null });
+        });
+        return items;
+    }
+
     function parseConcentration(val) {
         if (val === undefined || val === null) return 0;
         if (typeof val === 'number') return val;
@@ -2461,11 +2526,20 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 name: i.name.replace(/\*/g, '').trim()
             }));
 
+            const rawTemplateText = templateItems.map(item => {
+                const pct = item.percentage != null ? ` (${item.percentage}%)` : '';
+                return `${item.name}${pct}`;
+            }).join(', ');
+            const formattedTemplateText = formatIngredientsListText(rawTemplateText);
+            templateTextarea.value = formattedTemplateText;
+            updateIngredientsBackdrop(templateBackdrop, templateTextarea.value);
+            templateItems = parseTemplateIngredientsText(formattedTemplateText);
+
             const labelItems = labelJson.ingredients.map(name => name.replace(/\*/g, '').trim());
             const formattedLabelText = formatIngredientsListText(labelItems.join(', '));
 
             labelTextarea.value = formattedLabelText;
-            updateIngredientsBackdrop(labelTextarea.value);
+            updateIngredientsBackdrop(labelBackdrop, labelTextarea.value);
 
             initialTimeTaken = ((performance.now() - startTime) / 1000).toFixed(2);
 

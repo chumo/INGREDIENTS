@@ -236,12 +236,22 @@
             </section>
 
             <section class="card result-section hidden" id="result-section">
-                <div class="edit-label-ingredients" style="margin-bottom: 2rem;">
-                    <h3 style="margin-top: 0;" data-i18n="extracted_ingredients">Ingredientes Extraídos de la Etiqueta</h3>
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;" data-i18n="edit_instructions">Edita la lista separada por comas si la IA omitió o alucinó ingredientes. El informe se actualizará automáticamente.</p>
-                    <div class="textarea-wrapper">
-                        <div id="label-ingredients-backdrop"></div>
-                        <textarea id="label-ingredients-edit" rows="4" spellcheck="false"></textarea>
+                <div class="edit-ingredients-split" style="margin-bottom: 2rem;">
+                    <div class="edit-ingredients-col">
+                        <h3 style="margin-top: 0;" data-i18n="extracted_template_ingredients">Ingredientes Extraídos de la Plantilla</h3>
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;" data-i18n="edit_template_instructions">Edita la lista separada por comas y porcentajes opcionales si la IA cometió errores.</p>
+                        <div class="textarea-wrapper">
+                            <div id="template-ingredients-backdrop"></div>
+                            <textarea id="template-ingredients-edit" rows="8" spellcheck="false"></textarea>
+                        </div>
+                    </div>
+                    <div class="edit-ingredients-col">
+                        <h3 style="margin-top: 0;" data-i18n="extracted_label_ingredients">Ingredientes Extraídos de la Etiqueta</h3>
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;" data-i18n="edit_label_instructions">Edita la lista separada por comas si la IA omitió o alucinó ingredientes.</p>
+                        <div class="textarea-wrapper">
+                            <div id="label-ingredients-backdrop"></div>
+                            <textarea id="label-ingredients-edit" rows="8" spellcheck="false"></textarea>
+                        </div>
                     </div>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
