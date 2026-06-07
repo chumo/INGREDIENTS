@@ -92,7 +92,11 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             delete_column_tooltip: "Eliminar este componente",
             analysis_results_title: "Resultados del Análisis",
             sort_below_one_label: "Ordenar < 1% alfabéticamente",
-            declared_allergens_heading: "Alérgenos a Declarar en Etiqueta"
+            declared_allergens_heading: "Alérgenos a Declarar en Etiqueta",
+            config_title: "Configuración General",
+            ingredients_format_label: "Formato de lista de ingredientes",
+            format_all_capitals: "TODO MAYÚSCULAS",
+            format_title_case: "Mayúsculas de Título"
         },
         en: {
             header_app_name: "LABEL REGULATORY",
@@ -186,7 +190,11 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             delete_column_tooltip: "Delete this component",
             analysis_results_title: "Analysis Results",
             sort_below_one_label: "Sort < 1% alphabetically",
-            declared_allergens_heading: "Allergens to Declare on Label"
+            declared_allergens_heading: "Allergens to Declare on Label",
+            config_title: "General Configuration",
+            ingredients_format_label: "Ingredients list format",
+            format_all_capitals: "ALL CAPITALS",
+            format_title_case: "Title Case"
         }
     };
 
@@ -279,7 +287,63 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         }
     ];
 
+    // General Configuration: Ingredients List Format
+    let ingredientsFormat = localStorage.getItem('ingredientsFormat') || 'ALL_CAPITALS';
 
+    function formatIngredientName(name) {
+        if (!name) return '';
+        if (ingredientsFormat === 'ALL_CAPITALS') {
+            return name.toUpperCase();
+        } else if (ingredientsFormat === 'TITLE_CASE') {
+            return name.toLowerCase().replace(/(?:^|\s|-|\/|\()([a-z\u00C0-\u00FF])/g, function(match) {
+                return match.toUpperCase();
+            });
+        }
+        return name;
+    }
+
+    function formatIngredientsListText(text) {
+        if (!text) return '';
+        return text.split(',').map(s => formatIngredientName(s.trim())).join(', ');
+    }
+
+    function onIngredientsFormatChange() {
+        // 1. Re-format textbox contents if they exist
+        if (labelTextarea && labelTextarea.value) {
+            const formatted = formatIngredientsListText(labelTextarea.value);
+            labelTextarea.value = formatted;
+            updateIngredientsBackdrop(formatted);
+            
+            const updatedLabelItems = formatted.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            if (typeof runValidation === 'function') {
+                runValidation(updatedLabelItems);
+            }
+        } else if (templateItems && templateItems.length > 0) {
+            const currentLabelText = labelTextarea ? labelTextarea.value : '';
+            const updatedLabelItems = currentLabelText.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            if (typeof runValidation === 'function') {
+                runValidation(updatedLabelItems);
+            }
+        }
+
+        // 2. Re-render Allergen Table if initialized
+        if (typeof renderAllergenTable === 'function') {
+            renderAllergenTable();
+        }
+    }
+
+    // Initialize radio buttons from saved state
+    const formatRadios = document.querySelectorAll('input[name="ingredients-format"]');
+    formatRadios.forEach(radio => {
+        if (radio.value === ingredientsFormat) {
+            radio.checked = true;
+        }
+        radio.addEventListener('change', (e) => {
+            ingredientsFormat = e.target.value;
+            localStorage.setItem('ingredientsFormat', ingredientsFormat);
+            onIngredientsFormatChange();
+        });
+    });
 
     window.setLanguage = function(lang) {
         currentLanguage = lang;
@@ -478,7 +542,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             templateColHtml += `
             <div class="template-item-wrapper">
                 <div class="percentage-badge">${pctText}</div>
-                <div class="ing-item ${t.status}" id="${t.id}">${t.name}</div>
+                <div class="ing-item ${t.status}" id="${t.id}">${formatIngredientName(t.name)}</div>
             </div>
             `;
         });
@@ -493,7 +557,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 </div>
                 <div class="comparison-column" id="label-col">
                     <h4>${translations[currentLanguage].label_col_header}</h4>
-                    ${labelNodes.map(l => `<div class="ing-item ${l.status}" id="${l.id}">${l.name}</div>`).join('')}
+                    ${labelNodes.map(l => `<div class="ing-item ${l.status}" id="${l.id}">${formatIngredientName(l.name)}</div>`).join('')}
                 </div>
             </div>
         </div>
@@ -515,7 +579,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                     html += `
                         <div class="validation-category missing">
                             <h4>⚠️ ${translations[currentLanguage].missing_ingredients} (${missing.length})</h4>
-                            <ul>${missing.map(m => `<li>${m}</li>`).join('')}</ul>
+                            <ul>${missing.map(m => `<li>${formatIngredientName(m)}</li>`).join('')}</ul>
                         </div>
                     `;
                 }
@@ -523,7 +587,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                     html += `
                         <div class="validation-category unnecessary">
                             <h4>⚠️ ${translations[currentLanguage].unnecessary_ingredients} (${unnecessary.length})</h4>
-                            <ul>${unnecessary.map(m => `<li>${m}</li>`).join('')}</ul>
+                            <ul>${unnecessary.map(m => `<li>${formatIngredientName(m)}</li>`).join('')}</ul>
                         </div>
                     `;
                 }
@@ -531,7 +595,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                     html += `
                         <div class="validation-category misordered">
                             <h4>⚠️ ${translations[currentLanguage].misordered_ingredients} (${misordered.length})</h4>
-                            <ul>${misordered.map(m => `<li>${m}</li>`).join('')}</ul>
+                            <ul>${misordered.map(m => `<li>${formatIngredientName(m)}</li>`).join('')}</ul>
                         </div>
                     `;
                 }
@@ -1071,7 +1135,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             if (comp.extraIncis && comp.extraIncis.length > 0) {
                 comp.extraIncis.forEach(item => {
                     const extraItem = document.createElement('div');
-                    extraItem.textContent = `${item.inci || item.name} (${item.percentage}%)`;
+                    extraItem.textContent = `${formatIngredientName(item.inci || item.name)} (${item.percentage}%)`;
                     extraList.appendChild(extraItem);
                 });
             } else {
@@ -1104,7 +1168,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             // INCI name (sticky col)
             const tdInci = document.createElement('td');
             tdInci.className = 'sticky-col';
-            tdInci.textContent = item.INCI;
+            tdInci.textContent = formatIngredientName(item.INCI);
             row.appendChild(tdInci);
 
             // Concentrations for each component
@@ -1201,7 +1265,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
 
                     const nameSpan = document.createElement('span');
                     nameSpan.className = 'allergen-inci';
-                    nameSpan.textContent = item.inci;
+                    nameSpan.textContent = formatIngredientName(item.inci);
 
                     const badgeSpan = document.createElement('span');
                     const isHigh = item.concentration >= 1.0;
@@ -1539,7 +1603,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             doc.setFontSize(9.5);
             doc.setTextColor(51, 65, 85);
 
-            const allergensString = declaredList.map(item => item.inci).join(', ');
+            const allergensString = declaredList.map(item => formatIngredientName(item.inci)).join(', ');
             const splitAllergens = doc.splitTextToSize(allergensString, contentW - 10);
 
             const lineHeight = 5;
@@ -2326,13 +2390,15 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             }));
 
             const labelItems = labelJson.ingredients.map(name => name.replace(/\*/g, '').trim());
+            const formattedLabelText = formatIngredientsListText(labelItems.join(', '));
 
-            labelTextarea.value = labelItems.join(', ');
+            labelTextarea.value = formattedLabelText;
             updateIngredientsBackdrop(labelTextarea.value);
 
             initialTimeTaken = ((performance.now() - startTime) / 1000).toFixed(2);
 
-            runValidation(labelItems);
+            const updatedLabelItems = formattedLabelText.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            runValidation(updatedLabelItems);
 
             resultSection.classList.remove('hidden');
             resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2476,7 +2542,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
         doc.setTextColor(51, 65, 85);
-        var labelLines = doc.splitTextToSize(labelIngredientsText || '—', contentW);
+        var labelLines = doc.splitTextToSize(formatIngredientsListText(labelIngredientsText) || '—', contentW);
         doc.text(labelLines, margin, y);
         y += labelLines.length * 4.5 + 4;
 
@@ -2491,7 +2557,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
         doc.setTextColor(51, 65, 85);
-        var templateString = templateNodes.map(t => t.name).join(', ');
+        var templateString = templateNodes.map(t => formatIngredientName(t.name)).join(', ');
         var templateLines = doc.splitTextToSize(templateString || '—', contentW);
         doc.text(templateLines, margin, y);
         y += templateLines.length * 4.5 + 6;
@@ -2571,7 +2637,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(7.5);
             doc.setTextColor(51, 65, 85);
-            var displayName = t.name;
+            var displayName = formatIngredientName(t.name);
             if (displayName.length > 35) displayName = displayName.substring(0, 32) + '...';
             doc.text(displayName, tColX + 3, itemY + diagBoxH/2 + 0.8);
 
@@ -2601,7 +2667,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(7.5);
             doc.setTextColor(51, 65, 85);
-            var displayName = l.name;
+            var displayName = formatIngredientName(l.name);
             if (displayName.length > 35) displayName = displayName.substring(0, 32) + '...';
             doc.text(displayName, lColX + 3, itemY + diagBoxH/2 + 0.8);
 
@@ -2693,7 +2759,7 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(71, 85, 105);
                 items.forEach(function(item) {
-                    var itemLines = doc.splitTextToSize('• ' + item, contentW - 5);
+                    var itemLines = doc.splitTextToSize('• ' + formatIngredientName(item), contentW - 5);
                     checkPage(itemLines.length * 5);
                     doc.text(itemLines, margin + 3, y);
                     y += itemLines.length * 5;
