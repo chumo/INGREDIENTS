@@ -79,8 +79,8 @@ Devuelve exactamente este formato JSON: {"brand": "string", "project": "string",
             allergen_prompt: `Extract the following information from the provided document (text or images) and return it strictly as a valid JSON object:
 - product_code: typically a 7-digit number near the product name.
 - printing_date: typically found as a footnote or elsewhere in the document. Convert to YYYY-mm-dd format.
-- allergens: list of INCI names with their corresponding concentration percentage. Use ONLY the INCI names provided in this list: {inci_list}. Some won't have a percentage, in such case assume 0. If a concentration is given as a range (e.g. '0.01 - 0.05%'), always return the upper value of that range (e.g. 0.05).
-- extra_incis: list of ALL OTHER INCI names found in the document with their corresponding concentration percentage. Skip those already included in the 'allergens' list. If a range is found, always use the upper value.
+- allergens: list of INCI names with their corresponding concentration percentage. Use ONLY the INCI names provided in this list: {inci_list}. Some won't have a percentage, in such case assume 0. If a concentration is reported as less than a value (e.g. '<0.01%') or as non-detectable (e.g. 'n/d'), return 0 for that ingredient. If a concentration is given as a range (e.g. '0.01 - 0.05%'), always return the upper value of that range (e.g. 0.05).
+- extra_incis: list of ALL OTHER INCI names found in the document with their corresponding concentration percentage. Skip those already included in the 'allergens' list. If a concentration is reported as less than a value or as non-detectable (e.g. 'n/d'), return 0. If a range is found, always use the upper value.
 Expected JSON format: {"product_code": "string", "printing_date": "string", "allergens": [{"inci": "string", "percentage": number}], "extra_incis": [{"inci": "string", "percentage": number}]}`,
             product_code: "Código de Producto",
             printing_date: "Fecha de Impresión",
@@ -181,8 +181,8 @@ Return exactly this JSON format: {"brand": "string", "project": "string", "formu
             allergen_prompt: `Extract the following information from the provided document (text or images) and return it strictly as a valid JSON object:
 - product_code: typically a 7-digit number near the product name.
 - printing_date: typically found as a footnote or elsewhere in the document. Convert to YYYY-mm-dd format.
-- allergens: list of INCI names with their corresponding concentration percentage. Use ONLY the INCI names provided in this list: {inci_list}. Some won't have a percentage, in such case assume 0. If a concentration is given as a range (e.g. '0.01 - 0.05%'), always return the upper value of that range (e.g. 0.05).
-- extra_incis: list of ALL OTHER INCI names found in the document with their corresponding concentration percentage. Skip those already included in the 'allergens' list. If a range is found, always use the upper value.
+- allergens: list of INCI names with their corresponding concentration percentage. Use ONLY the INCI names provided in this list: {inci_list}. Some won't have a percentage, in such case assume 0. If a concentration is reported as less than a value (e.g. '<0.01%') or as non-detectable (e.g. 'n/d'), return 0 for that ingredient. If a concentration is given as a range (e.g. '0.01 - 0.05%'), always return the upper value of that range (e.g. 0.05).
+- extra_incis: list of ALL OTHER INCI names found in the document with their corresponding concentration percentage. Skip those already included in the 'allergens' list. If a concentration is reported as less than a value or as non-detectable (e.g. 'n/d'), return 0. If a range is found, always use the upper value.
 Expected JSON format: {"product_code": "string", "printing_date": "string", "allergens": [{"inci": "string", "percentage": number}], "extra_incis": [{"inci": "string", "percentage": number}]}`,
             product_code: "Product Code",
             printing_date: "Printing Date",
@@ -2106,6 +2106,9 @@ Expected JSON format: {"product_code": "string", "printing_date": "string", "all
 
         let s = String(val).trim();
         if (!s) return 0;
+
+        // Treat below-detection values and non-detects as zero.
+        if (/^\s*</.test(s) || /^n\s*\/\s*d\.?$/i.test(s)) return 0;
 
         // Replace all commas with dots for parsing (global replacement)
         s = s.replace(/,/g, '.');
